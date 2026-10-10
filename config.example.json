@@ -1,0 +1,45 @@
+{
+  "topics": ["mytopic"],
+  "autostart": false,
+  "server": {
+    "base_url": "https://ntfy.sh",
+    "insecure_tls": false
+  },
+  "auth": {
+    "method": "none",
+    "username": "",
+    "password": "",
+    "token": ""
+  },
+  "connection": {
+    "transport": "auto",
+    "retry_initial_secs": 2,
+    "retry_max_secs": 120,
+    "retry_max_attempts": 0,
+    "poll_interval_secs": 15
+  },
+  "notification": {
+    "enabled": true,
+    "min_priority": 1,
+    "sound": true,
+    "show_attachments": true,
+    "download_images": true,
+    "max_image_mb": 10,
+    "app_name": "ntfy-windows",
+    "app_id": "com.ntfy.windows",
+    "app_icon": "",
+    "ignore_topics": "",
+    "save_images": true,
+    "image_dir": ""
+  },
+  "ui": {
+    "theme": "dark",
+    "history_limit": 500,
+    "font_path": "",
+    "close_to_tray": true,
+    "language": "system"
+  },
+  "logging": {
+    "level": "info"
+  }
+}

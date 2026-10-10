@@ -1,0 +1,15 @@
+/target
+/dist
+**/*.rs.bk
+*.pdb
+*.log
+*.exe
+# 运行时生成的配置（示例见 config.example.json）
+config.json
+config.toml
+# 编辑器 / 系统
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+desktop.ini
