@@ -129,6 +129,9 @@ The binary is at `target\release\ntfy-windows.exe`.
 # Print CPU diagnostics every 10 s
 .\ntfy-windows.exe --no-gui --cpu-debug
 
+# Print memory diagnostics every 10 s (working set, commit, buffer sizes)
+.\ntfy-windows.exe --mem-debug
+
 # Install / uninstall auto-start (HKCU Run, uses --no-gui)
 .\ntfy-windows.exe --install-autostart
 .\ntfy-windows.exe --uninstall-autostart

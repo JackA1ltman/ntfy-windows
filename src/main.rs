@@ -18,6 +18,7 @@ mod emoji;
 mod gui;
 mod i18n;
 mod logging;
+mod mem_debug;
 mod models;
 mod ntfy_client;
 mod state;
@@ -43,6 +44,7 @@ struct CliOptions {
     no_gui: bool,
     minimized: bool,
     cpu_debug: bool,
+    mem_debug: bool,
     config: Option<PathBuf>,
     install_autostart: bool,
     uninstall_autostart: bool,
@@ -59,6 +61,7 @@ impl CliOptions {
                 "--no-gui" | "--headless" | "--daemon" => options.no_gui = true,
                 "--minimized" | "--start-minimized" => options.minimized = true,
                 "--cpu-debug" | "--debug-cpu" => options.cpu_debug = true,
+                "--mem-debug" | "--debug-mem" => options.mem_debug = true,
                 "--install-autostart" => options.install_autostart = true,
                 "--uninstall-autostart" => options.uninstall_autostart = true,
                 "--config" => {
@@ -106,6 +109,7 @@ fn print_help() {    println!(
            --no-gui                无界面后台运行（带系统托盘，无 GUI 窗口）\n\
            --minimized             启动图形界面但隐藏到系统托盘\n\
            --cpu-debug             定期输出 CPU 占用诊断日志\n\
+           --mem-debug             定期输出内存占用诊断日志\n\
            --config <路径>         使用指定的配置文件\n\
            --install-autostart     写入开机自启并退出\n\
            --uninstall-autostart   取消开机自启并退出\n\
@@ -178,6 +182,11 @@ fn main() -> anyhow::Result<()> {
     if options.cpu_debug {
         cpu_debug::start(10);
         info!("{}", crate::i18n::tr("已启用 CPU 监控（每 10 秒输出一次）"));
+    }
+
+    if options.mem_debug {
+        mem_debug::start(state.clone(), 10);
+        info!("{}", crate::i18n::tr("已启用内存监控（每 10 秒输出一次）"));
     }
 
     // Register the AppUserModelID so that toasts are attributed correctly.

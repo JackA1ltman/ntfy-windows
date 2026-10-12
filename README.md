@@ -132,6 +132,9 @@ cargo build --release
 # 输出 CPU 占用诊断日志（每 10 秒）
 .\ntfy-windows.exe --no-gui --cpu-debug
 
+# 输出内存占用诊断日志（每 10 秒；含历史/日志缓冲大小）
+.\ntfy-windows.exe --mem-debug
+
 # 安装 / 卸载开机自启（写入 HKCU Run，参数为 --no-gui）
 .\ntfy-windows.exe --install-autostart
 .\ntfy-windows.exe --uninstall-autostart

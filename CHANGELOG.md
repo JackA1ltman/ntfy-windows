@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `--mem-debug`: log process working set / commit size and the in-memory history / log
+  buffer sizes every 10 s (useful to tell GUI memory apart from buffer growth).
 - Sticky notifications: events at or above `notification.sticky_min_priority`
   (default `5`, `0` = off) now use a toast `scenario` so they stay on screen until handled —
   `"reminder"` (stays) or `"alarm"` (stays + loops the alarm sound), selectable via

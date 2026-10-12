@@ -193,6 +193,18 @@ impl SharedState {
         guard.snapshot.clone().unwrap_or_default()
     }
 
+    /// `(count, approximate bytes)` of the current log buffer. Used by the
+    /// `--mem-debug` diagnostics.
+    pub fn log_stats(&self) -> (usize, usize) {
+        let guard = self.logs.lock().unwrap_or_else(|e| e.into_inner());
+        let bytes = guard
+            .entries
+            .iter()
+            .map(|e| e.target.len() + e.message.len())
+            .sum();
+        (guard.entries.len(), bytes)
+    }
+
     /// Append a log line. Uses a dedicated mutex to avoid deadlocks with `lock()`.
     pub fn push_log(&self, level: Level, target: &str, message: &str) {
         let mut guard = self.logs.lock().unwrap_or_else(|e| e.into_inner());
