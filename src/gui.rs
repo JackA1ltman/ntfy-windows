@@ -332,6 +332,13 @@ impl GuiApp {
 impl eframe::App for GuiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         crate::cpu_debug::note_frame();
+        if crate::mem_debug::enabled() {
+            let (width, height, galleys) = ctx.fonts(|fonts| {
+                let [w, h] = fonts.font_image_size();
+                (w, h, fonts.num_galleys_in_cache())
+            });
+            crate::mem_debug::note_fonts(width, height, galleys);
+        }
         if crate::cpu_debug::enabled() {
             let causes: Vec<String> = ctx
                 .repaint_causes()

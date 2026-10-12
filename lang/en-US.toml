@@ -187,6 +187,7 @@
 "已启用内存监控（每 10 秒输出一次）" = "Memory monitor enabled (prints every 10 s)"
 "启动内存监控线程失败: {err}" = "Failed to start memory monitor thread: {err}"
 "内存监控: 工作集 {ws} MB（峰值 {peak} MB），提交 {commit} MB，历史 {history} 条，日志 {log_count} 条/{log_bytes} 字节" = "Memory: working set {ws} MB (peak {peak} MB), commit {commit} MB, history {history} entries, logs {log_count} entries/{log_bytes} bytes"
+"内存监控: 工作集 {ws} MB（峰值 {peak} MB），提交 {commit} MB，历史 {history} 条，日志 {log_count} 条/{log_bytes} 字节，字体图集 {atlas_size}（约 {atlas_mb} MB），galley {galleys} 个" = "Memory: working set {ws} MB (peak {peak} MB), commit {commit} MB, history {history} entries, logs {log_count} entries/{log_bytes} bytes, font atlas {atlas_size} (~{atlas_mb} MB), {galleys} galleys"
 "检测到另一个 ntfy-windows 实例正在运行，本次启动已取消" = "Another ntfy-windows instance is running; startup cancelled"
 "初始化 Windows 通知失败: {err}" = "Failed to initialise Windows notifications: {err}"
 "以无界面模式运行" = "Running headless"
