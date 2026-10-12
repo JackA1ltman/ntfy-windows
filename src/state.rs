@@ -94,6 +94,19 @@ pub struct LogEntry {
     pub message: String,
 }
 
+/// Log ring buffer plus a lazily rebuilt, immutable snapshot for cheap reads.
+///
+/// `logs()` used to clone the whole buffer on every call (once per frame while
+/// the Logs tab is open). The snapshot is now rebuilt only when the buffer
+/// actually changes, so readers can cheaply clone an `Arc` instead.
+#[derive(Default)]
+struct LogBuffer {
+    entries: VecDeque<LogEntry>,
+    /// Cached snapshot of `entries`, rebuilt only when `dirty` is set.
+    snapshot: Option<Arc<Vec<LogEntry>>>,
+    dirty: bool,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct Stats {
     pub received: u64,
@@ -123,7 +136,7 @@ pub struct AppState {
 #[derive(Clone)]
 pub struct SharedState {
     inner: Arc<Mutex<AppState>>,
-    logs: Arc<Mutex<VecDeque<LogEntry>>>,
+    logs: Arc<Mutex<LogBuffer>>,
     waker: Arc<Mutex<Option<Arc<dyn Fn() + Send + Sync>>>>,
 }
 
@@ -141,7 +154,7 @@ impl SharedState {
         };
         Self {
             inner: Arc::new(Mutex::new(state)),
-            logs: Arc::new(Mutex::new(VecDeque::new())),
+            logs: Arc::new(Mutex::new(LogBuffer::default())),
             waker: Arc::new(Mutex::new(None)),
         }
     }
@@ -166,28 +179,40 @@ impl SharedState {
     }
 
     /// Snapshot of the current log buffer (oldest first).
-    pub fn logs(&self) -> Vec<LogEntry> {
-        let guard = self.logs.lock().unwrap_or_else(|e| e.into_inner());
-        guard.iter().cloned().collect()
+    ///
+    /// The snapshot is cached and only rebuilt when the buffer changed, so
+    /// callers can cheaply clone the returned `Arc` on every frame instead of
+    /// copying the whole buffer each time.
+    pub fn logs(&self) -> Arc<Vec<LogEntry>> {
+        let mut guard = self.logs.lock().unwrap_or_else(|e| e.into_inner());
+        if guard.dirty || guard.snapshot.is_none() {
+            let snapshot: Arc<Vec<LogEntry>> = Arc::new(guard.entries.iter().cloned().collect());
+            guard.snapshot = Some(snapshot);
+            guard.dirty = false;
+        }
+        guard.snapshot.clone().unwrap_or_default()
     }
 
     /// Append a log line. Uses a dedicated mutex to avoid deadlocks with `lock()`.
     pub fn push_log(&self, level: Level, target: &str, message: &str) {
         let mut guard = self.logs.lock().unwrap_or_else(|e| e.into_inner());
-        guard.push_back(LogEntry {
+        guard.entries.push_back(LogEntry {
             time: Local::now(),
             level,
             target: target.to_string(),
             message: message.to_string(),
         });
-        while guard.len() > MAX_LOGS {
-            guard.pop_front();
+        while guard.entries.len() > MAX_LOGS {
+            guard.entries.pop_front();
         }
+        guard.dirty = true;
     }
 
     pub fn clear_logs(&self) {
         let mut guard = self.logs.lock().unwrap_or_else(|e| e.into_inner());
-        guard.clear();
+        guard.entries.clear();
+        guard.snapshot = Some(Arc::new(Vec::new()));
+        guard.dirty = false;
     }
 
     /// Returns `true` (and clears the flag) if the history changed since the
