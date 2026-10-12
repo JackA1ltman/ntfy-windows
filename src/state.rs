@@ -47,16 +47,16 @@ pub enum Command {
 }
 
 /// A notification that has already been received, persisted for the GUI.
+///
+/// The full ntfy message is the single source of truth for the id / topic /
+/// title / message / priority / tags (see the accessors below), so those are
+/// not stored twice.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct HistoryEntry {
-    pub id: String,
-    pub topic: String,
-    pub title: String,
-    pub message: String,
-    pub priority: i32,
-    pub tags: Vec<String>,
-    pub received_at: DateTime<Local>,
+    /// The original ntfy message (also preserved verbatim in exports).
+    #[serde(default)]
     pub raw: NtfyMessage,
+    pub received_at: DateTime<Local>,
     /// Path of the archived image, if the notification had an image attachment.
     #[serde(default)]
     pub image_path: Option<String>,
@@ -72,16 +72,37 @@ impl HistoryEntry {
         file_path: Option<&Path>,
     ) -> Self {
         Self {
-            id: msg.id.clone(),
-            topic: msg.topic.clone(),
-            title: msg.display_title(),
-            message: msg.text(),
-            priority: msg.priority(),
-            tags: msg.tags.clone(),
-            received_at: msg.received_at(),
             raw: msg.clone(),
+            received_at: msg.received_at(),
             image_path: image_path.map(|p| p.to_string_lossy().into_owned()),
             file_path: file_path.map(|p| p.to_string_lossy().into_owned()),
+        }
+    }
+
+    pub fn topic(&self) -> &str {
+        &self.raw.topic
+    }
+
+    pub fn message(&self) -> &str {
+        self.raw.message.as_deref().unwrap_or("")
+    }
+
+    pub fn priority(&self) -> i32 {
+        self.raw.priority()
+    }
+
+    pub fn tags(&self) -> &[String] {
+        &self.raw.tags
+    }
+
+    /// Display title (falls back to the topic). Borrowed when possible.
+    pub fn title(&self) -> std::borrow::Cow<'_, str> {
+        match &self.raw.title {
+            Some(title) if !title.trim().is_empty() => std::borrow::Cow::Borrowed(title.as_str()),
+            _ if !self.raw.topic.is_empty() => {
+                std::borrow::Cow::Owned(format!("ntfy · {}", self.raw.topic))
+            }
+            _ => std::borrow::Cow::Borrowed("ntfy"),
         }
     }
 }

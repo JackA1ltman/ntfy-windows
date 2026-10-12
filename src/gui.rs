@@ -926,7 +926,7 @@ impl GuiApp {
 
         let topics = {
             let s = self.state.lock();
-            let mut topics: Vec<String> = s.history.iter().map(|h| h.topic.clone()).collect();
+            let mut topics: Vec<String> = s.history.iter().map(|h| h.topic().to_string()).collect();
             topics.sort();
             topics.dedup();
             topics
@@ -957,14 +957,18 @@ impl GuiApp {
                 let mut shown = 0usize;
                 for entry in s.history.iter() {
                     if let Some(filter) = &topic_filter {
-                        if &entry.topic != filter {
+                        if entry.topic() != filter.as_str() {
                             continue;
                         }
                     }
                     if !query.is_empty() {
-                        let haystack =
-                            format!("{} {} {}", entry.title, entry.message, entry.topic)
-                                .to_lowercase();
+                        let haystack = format!(
+                            "{} {} {}",
+                            entry.title(),
+                            entry.message(),
+                            entry.topic()
+                        )
+                        .to_lowercase();
                         if !haystack.contains(&query) {
                             continue;
                         }
@@ -973,17 +977,19 @@ impl GuiApp {
                     egui::Frame::group(ui.style()).show(ui, |ui| {
                         ui.horizontal(|ui| {
                             ui.colored_label(
-                                priority_color(entry.priority),
-                                format!("P{}", entry.priority),
+                                priority_color(entry.priority()),
+                                format!("P{}", entry.priority()),
                             );
-                            ui.label(egui::RichText::new(entry.topic.as_str()).strong());
+                            ui.label(egui::RichText::new(entry.topic()).strong());
                             ui.weak(entry.received_at.format("%Y-%m-%d %H:%M:%S").to_string());
                         });
-                        if !entry.title.is_empty() {
-                            ui.label(egui::RichText::new(entry.title.as_str()).strong());
+                        let title = entry.title();
+                        if !title.is_empty() {
+                            ui.label(egui::RichText::new(title.as_ref()).strong());
                         }
-                        if !entry.message.is_empty() {
-                            ui.label(entry.message.as_str());
+                        let message = entry.message();
+                        if !message.is_empty() {
+                            ui.label(message);
                         }
                         if let Some(path) = &entry.image_path {
                             ui.horizontal(|ui| {
@@ -1021,11 +1027,10 @@ impl GuiApp {
                                 }
                             });
                         }
-                        if !entry.tags.is_empty() {
+                        let tags = entry.tags();
+                        if !tags.is_empty() {
                             ui.weak(
-                                entry
-                                    .tags
-                                    .iter()
+                                tags.iter()
                                     .map(|t| format!("#{t}"))
                                     .collect::<Vec<_>>()
                                     .join(" "),
