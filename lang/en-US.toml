@@ -287,3 +287,18 @@
 "CPU 监控: 进程占用 {cpu}%（单核=100%），GUI 重绘 {fps}/s，状态唤醒 {wps}/s" = "CPU: process {cpu}% (one core = 100%), GUI repaints {fps}/s, state wakes {wps}/s"
 "重绘原因: {list}" = "repaint causes: {list}"
 "输入事件: {list}" = "input events: {list}"
+
+# ---- CLI help ----
+"将 ntfy.sh 通知转发为 Windows 系统通知" = "Forward ntfy.sh notifications to Windows toast notifications"
+"用法" = "Usage"
+"选项" = "Options"
+"无界面后台运行（带系统托盘，无 GUI 窗口）" = "Headless background mode (tray icon, no GUI window)"
+"启动图形界面但隐藏到系统托盘" = "Start the GUI hidden in the system tray"
+"定期输出 CPU 占用诊断日志" = "Periodically log CPU usage diagnostics"
+"定期输出内存占用诊断日志" = "Periodically log memory usage diagnostics"
+"路径" = "path"
+"使用指定的配置文件" = "Use a specific configuration file"
+"写入开机自启并退出" = "Enable auto-start and exit"
+"取消开机自启并退出" = "Disable auto-start and exit"
+"显示帮助" = "Show this help"
+"显示版本" = "Show the version"

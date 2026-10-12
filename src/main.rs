@@ -100,23 +100,47 @@ fn single_instance() -> InstanceLock {
     }
 }
 
-fn print_help() {    println!(
-        "ntfy-windows {version} - 将 ntfy.sh 通知转发为 Windows 系统通知\n\
-         \n\
-         用法: ntfy-windows [选项]\n\
-         \n\
-         选项:\n\
-           --no-gui                无界面后台运行（带系统托盘，无 GUI 窗口）\n\
-           --minimized             启动图形界面但隐藏到系统托盘\n\
-           --cpu-debug             定期输出 CPU 占用诊断日志\n\
-           --mem-debug             定期输出内存占用诊断日志\n\
-           --config <路径>         使用指定的配置文件\n\
-           --install-autostart     写入开机自启并退出\n\
-           --uninstall-autostart   取消开机自启并退出\n\
-           -h, --help              显示帮助\n\
-           -V, --version           显示版本\n",
-        version = env!("CARGO_PKG_VERSION")
+fn print_help() {
+    println!(
+        "ntfy-windows {} - {}",
+        env!("CARGO_PKG_VERSION"),
+        crate::i18n::tr("将 ntfy.sh 通知转发为 Windows 系统通知")
     );
+    println!();
+    println!("{}: ntfy-windows [{}]", crate::i18n::tr("用法"), crate::i18n::tr("选项"));
+    println!();
+    println!("{}:", crate::i18n::tr("选项"));
+    println!(
+        "  --no-gui                {}",
+        crate::i18n::tr("无界面后台运行（带系统托盘，无 GUI 窗口）")
+    );
+    println!(
+        "  --minimized             {}",
+        crate::i18n::tr("启动图形界面但隐藏到系统托盘")
+    );
+    println!(
+        "  --cpu-debug             {}",
+        crate::i18n::tr("定期输出 CPU 占用诊断日志")
+    );
+    println!(
+        "  --mem-debug             {}",
+        crate::i18n::tr("定期输出内存占用诊断日志")
+    );
+    println!(
+        "  --config <{}>   {}",
+        crate::i18n::tr("路径"),
+        crate::i18n::tr("使用指定的配置文件")
+    );
+    println!(
+        "  --install-autostart     {}",
+        crate::i18n::tr("写入开机自启并退出")
+    );
+    println!(
+        "  --uninstall-autostart   {}",
+        crate::i18n::tr("取消开机自启并退出")
+    );
+    println!("  -h, --help              {}", crate::i18n::tr("显示帮助"));
+    println!("  -V, --version           {}", crate::i18n::tr("显示版本"));
 }
 
 /// Re-attach to the console of the process that launched us, so CLI output
@@ -152,9 +176,28 @@ fn attach_parent_console() {
 #[cfg(not(windows))]
 fn attach_parent_console() {}
 
+/// Release the parent console (after `attach_parent_console`) before exiting,
+/// so the launching shell regains its console instead of waiting for us.
+#[cfg(windows)]
+fn detach_parent_console() {
+    use std::io::Write;
+    let _ = std::io::stdout().flush();
+    let _ = std::io::stderr().flush();
+    unsafe {
+        let _ = windows::Win32::System::Console::FreeConsole();
+    }
+}
+
+#[cfg(not(windows))]
+fn detach_parent_console() {}
+
 fn main() -> anyhow::Result<()> {
     let args: Vec<String> = std::env::args().collect();
     let options = CliOptions::parse(&args);
+
+    // Resolve the UI language as early as possible (the system language until
+    // the config is known) so the console output below can be localised.
+    i18n::set_language("system");
 
     // Console-only modes need the parent shell's console, otherwise their output
     // is silently discarded in the GUI-subsystem release build.
@@ -164,17 +207,14 @@ fn main() -> anyhow::Result<()> {
 
     if options.help {
         print_help();
+        detach_parent_console();
         return Ok(());
     }
     if options.version {
         println!("ntfy-windows {}", env!("CARGO_PKG_VERSION"));
+        detach_parent_console();
         return Ok(());
     }
-
-    // Resolve the UI language early so the startup console messages below
-    // (config load failure, auto-start) are localised. `system` is used until
-    // the configured language is known.
-    i18n::set_language("system");
 
     let config = match &options.config {
         Some(path) => Config::load_from(path),
@@ -192,11 +232,13 @@ fn main() -> anyhow::Result<()> {
     if options.install_autostart {
         autostart::set_autostart(true, &exe, true)?;
         println!("{}", crate::i18n::tr_args("已设置开机自启（后台托盘，无界面）: {path}", &[("path", &exe.display().to_string())]));
+        detach_parent_console();
         return Ok(());
     }
     if options.uninstall_autostart {
         autostart::set_autostart(false, &exe, true)?;
         println!("{}", crate::i18n::tr("已取消开机自启"));
+        detach_parent_console();
         return Ok(());
     }
 

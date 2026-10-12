@@ -31,6 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bound image decoding (max 8192 px per side, 64 MiB decode allocation) and the poll
   response body (8 MiB), so an oversized image or poll response cannot exhaust memory.
 - Loading the CJK font no longer keeps two copies in memory (see above).
+- The release (GUI-subsystem) binary now attaches to the parent console for the
+  console-only flags, so `--help` / `--version` / auto-start output is visible; it
+  detaches (`FreeConsole`) before exiting so the shell is not left waiting.
+- `--help` is now localised (system language).
 
 ## [0.1.1] - 2026-10-11
 
