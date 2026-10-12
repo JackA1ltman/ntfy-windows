@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `"reminder"` (stays) or `"alarm"` (stays + loops the alarm sound), selectable via
   `notification.sticky_scenario`. Both options are exposed in the GUI.
 
+### Changed
+
+- The CJK / symbol font bytes are now loaded once and kept in static memory
+  (`FontData::from_static`), so epaint borrows them instead of holding a second copy of the
+  ~20 MB font data. First launch loads `msyh.ttc` and `seguisym.ttf` once (cached by path).
+
 ## [0.1.1] - 2026-10-11
 
 ### Added

@@ -1349,11 +1349,11 @@ fn setup_fonts(ctx: &egui::Context, custom_path: &str) {
 
     let custom_path = custom_path.trim();
     if !custom_path.is_empty() {
-        match std::fs::read(custom_path) {
-            Ok(data) if ab_glyph::FontRef::try_from_slice(&data).is_ok() => {
+        match font_bytes(std::path::Path::new(custom_path)) {
+            Ok(bytes) if ab_glyph::FontRef::try_from_slice(bytes).is_ok() => {
                 fonts
                     .font_data
-                    .insert("custom".to_owned(), egui::FontData::from_owned(data));
+                    .insert("custom".to_owned(), egui::FontData::from_static(bytes));
                 added.push("custom".to_owned());
             }
             Ok(_) => tracing::warn!(
@@ -1377,14 +1377,14 @@ fn setup_fonts(ctx: &egui::Context, custom_path: &str) {
         ("cjk", &CJK_FONTS[..]),
         ("symbol", &SYMBOL_FONTS[..]),
     ] {
-        if let Some((path, data)) = load_first_font(candidates) {
+        if let Some((path, bytes)) = load_first_font(candidates) {
             tracing::info!(
                 "{}",
                 crate::i18n::tr_args("已加载字体: {path}", &[("path", path.as_str())])
             );
             fonts
                 .font_data
-                .insert(name.to_owned(), egui::FontData::from_owned(data));
+                .insert(name.to_owned(), egui::FontData::from_static(bytes));
             added.push(name.to_owned());
         }
     }
@@ -1427,14 +1427,14 @@ const SYMBOL_FONTS: &[&str] = &[
 
 /// Return the first candidate font under `%WINDIR%\Fonts` that exists and can
 /// be parsed (so a broken font never panics the app).
-fn load_first_font(candidates: &[&str]) -> Option<(String, Vec<u8>)> {
+fn load_first_font(candidates: &[&str]) -> Option<(String, &'static [u8])> {
     let windir = std::env::var("WINDIR").unwrap_or_else(|_| "C:\\Windows".to_string());
     let fonts_dir = std::path::PathBuf::from(windir).join("Fonts");
     for name in candidates {
         let path = fonts_dir.join(name);
-        if let Ok(data) = std::fs::read(&path) {
-            if ab_glyph::FontRef::try_from_slice(&data).is_ok() {
-                return Some((path.display().to_string(), data));
+        if let Ok(bytes) = font_bytes(&path) {
+            if ab_glyph::FontRef::try_from_slice(bytes).is_ok() {
+                return Some((path.display().to_string(), bytes));
             }
             let path_str = path.display().to_string();
             tracing::warn!(
@@ -1444,6 +1444,29 @@ fn load_first_font(candidates: &[&str]) -> Option<(String, Vec<u8>)> {
         }
     }
     None
+}
+
+/// Read a font file once and keep its bytes for the lifetime of the program.
+///
+/// `egui::FontData::from_owned` makes epaint clone the bytes again when it
+/// builds the ab_glyph font, so a runtime-loaded font ends up in memory twice.
+/// Leaking the bytes and using `FontData::from_static` lets epaint *borrow*
+/// them instead, halving the font's memory. The per-path cache guarantees a
+/// font is never leaked more than once, even if the settings are re-applied.
+fn font_bytes(path: &std::path::Path) -> std::io::Result<&'static [u8]> {
+    use std::collections::HashMap;
+    use std::sync::{Mutex, OnceLock};
+
+    static CACHE: OnceLock<Mutex<HashMap<std::path::PathBuf, &'static [u8]>>> = OnceLock::new();
+    let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    let mut guard = cache.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(bytes) = guard.get(path) {
+        return Ok(bytes);
+    }
+    let data = std::fs::read(path)?;
+    let leaked: &'static [u8] = Box::leak(data.into_boxed_slice());
+    guard.insert(path.to_path_buf(), leaked);
+    Ok(leaked)
 }
 
 fn status_color(status: ConnectionStatus) -> egui::Color32 {
