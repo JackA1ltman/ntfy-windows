@@ -192,7 +192,9 @@ cargo build --release
     "image_dir": "",
     "save_files": true,
     "files_dir": "",
-    "max_file_mb": 20
+    "max_file_mb": 20,
+    "sticky_min_priority": 5,
+    "sticky_scenario": "reminder"
   },
   "ui": {
     "theme": "dark",
@@ -351,6 +353,8 @@ cargo wix
 
 - `notification.sound = false` 时全部静音。
 - `notification.min_priority` 可用于只显示较高优先级的消息。
+- 优先级 ≥ `notification.sticky_min_priority`（默认 5）的通知会以 `scenario`（`reminder` 或 `alarm`）
+  **常驻屏幕**直到用户处理；`alarm` 额外循环提示音。
 - `tags` 中已知的表情短代码会转成 emoji 并加在标题前，未知标签以 `#tag` 形式附在正文末尾。
 - `click` 作为 Toast 的主体点击行为（`activationType="protocol"`，用默认浏览器打开）。
 - `actions` 中类型为 `view` 的按钮会转为 Toast 动作按钮（最多 4 个，另附「忽略」）。

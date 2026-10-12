@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Sticky notifications: events at or above `notification.sticky_min_priority`
+  (default `5`, `0` = off) now use a toast `scenario` so they stay on screen until handled —
+  `"reminder"` (stays) or `"alarm"` (stays + loops the alarm sound), selectable via
+  `notification.sticky_scenario`. Both options are exposed in the GUI.
+
 ## [0.1.1] - 2026-10-11
 
 ### Added

@@ -33,7 +33,9 @@
     "image_dir": "",
     "save_files": true,
     "files_dir": "",
-    "max_file_mb": 20
+    "max_file_mb": 20,
+    "sticky_min_priority": 5,
+    "sticky_scenario": "reminder"
   },
   "ui": {
     "theme": "dark",

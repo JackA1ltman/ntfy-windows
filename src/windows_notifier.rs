@@ -29,6 +29,9 @@ pub struct ToastContent {
     pub app_logo: Option<PathBuf>,
     pub hero_image: Option<PathBuf>,
     pub inline_images: Vec<PathBuf>,
+    /// Optional toast `scenario` attribute (`reminder` / `alarm`), which keeps
+    /// the notification on screen until the user handles it.
+    pub scenario: Option<String>,
     pub click_url: Option<String>,
     pub actions: Vec<ToastAction>,
 }
@@ -156,6 +159,13 @@ fn build_xml(c: &ToastContent) -> String {
     if c.long_duration {
         out.push_str(" duration=\"long\"");
     }
+    if let Some(scenario) = c.scenario.as_deref() {
+        if !scenario.is_empty() {
+            out.push_str(" scenario=\"");
+            out.push_str(&escape_attr(scenario));
+            out.push('"');
+        }
+    }
     if has_launch {
         out.push_str(" activationType=\"protocol\" launch=\"");
         out.push_str(&escape_attr(click));
@@ -201,14 +211,22 @@ fn build_xml(c: &ToastContent) -> String {
             4 => "ms-winsoundevent:Notification.IM",
             _ => "ms-winsoundevent:Notification.Default",
         };
-        out.push_str("<audio src=\"");
+        out.push_str("<audio");
+        // The alarm scenario requires the audio to loop.
+        if c.scenario.as_deref() == Some("alarm") {
+            out.push_str(" loop=\"true\"");
+        }
+        out.push_str(" src=\"");
         out.push_str(src);
         out.push_str("\"/>");
     }
 
-    // Actions (at most 4 plus a dismiss button; Windows allows 5 total)
+    // Actions. Windows allows at most 5, so sticky scenarios reserve room for
+    // the system snooze (alarm) / dismiss buttons.
+    let scenario = c.scenario.as_deref().unwrap_or("");
+    let max_custom = if scenario == "alarm" { 3 } else { 4 };
     let mut actions = String::new();
-    for action in c.actions.iter().take(4) {
+    for action in c.actions.iter().take(max_custom) {
         if action.url.is_empty() {
             continue;
         }
@@ -218,10 +236,17 @@ fn build_xml(c: &ToastContent) -> String {
         actions.push_str(&escape_attr(&action.url));
         actions.push_str("\"/>");
     }
+    if scenario == "alarm" {
+        actions.push_str("<action content=\"");
+        actions.push_str(&escape_attr(&crate::i18n::tr("稍后提醒")));
+        actions.push_str("\" activationType=\"system\" arguments=\"snooze\"/>");
+    }
+    if scenario == "reminder" || scenario == "alarm" || !actions.is_empty() {
+        actions.push_str("<action content=\"");
+        actions.push_str(&escape_attr(&crate::i18n::tr("忽略")));
+        actions.push_str("\" activationType=\"system\" arguments=\"dismiss\"/>");
+    }
     if !actions.is_empty() {
-        actions.push_str(
-            "<action content=\"忽略\" activationType=\"system\" arguments=\"dismiss\"/>",
-        );
         out.push_str("<actions>");
         out.push_str(&actions);
         out.push_str("</actions>");

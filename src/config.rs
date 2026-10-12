@@ -112,6 +112,11 @@ pub struct NotificationConfig {
     pub files_dir: String,
     /// Maximum size of a saved file attachment, in MB.
     pub max_file_mb: u64,
+    /// Notifications with a priority >= this value stay on screen until the
+    /// user handles them (`scenario="reminder"`/`"alarm"`). `0` disables it.
+    pub sticky_min_priority: i32,
+    /// Scenario used for sticky notifications: `"reminder"` or `"alarm"`.
+    pub sticky_scenario: String,
 }
 
 impl Default for NotificationConfig {
@@ -132,6 +137,8 @@ impl Default for NotificationConfig {
             save_files: true,
             files_dir: String::new(),
             max_file_mb: 20,
+            sticky_min_priority: 5,
+            sticky_scenario: "reminder".to_string(),
         }
     }
 }

@@ -751,6 +751,24 @@ impl GuiApp {
                         &mut self.draft.notification.sound,
                         crate::i18n::tr("播放提示音"),
                     );
+                    ui.add(
+                        egui::Slider::new(&mut self.draft.notification.sticky_min_priority, 0..=5)
+                            .text(crate::i18n::tr("常驻屏幕最低优先级（0 = 关闭）")),
+                    );
+                    egui::ComboBox::from_label(crate::i18n::tr("常驻通知类型"))
+                        .selected_text(scenario_label(&self.draft.notification.sticky_scenario))
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(
+                                &mut self.draft.notification.sticky_scenario,
+                                "reminder".to_string(),
+                                crate::i18n::tr("提醒（留屏直到处理）"),
+                            );
+                            ui.selectable_value(
+                                &mut self.draft.notification.sticky_scenario,
+                                "alarm".to_string(),
+                                crate::i18n::tr("闹钟（留屏 + 循环提示音）"),
+                            );
+                        });
                     ui.checkbox(
                         &mut self.draft.notification.show_attachments,
                         crate::i18n::tr("显示附件图片"),
@@ -1483,5 +1501,13 @@ fn theme_label(theme: &str) -> String {
         crate::i18n::tr("浅色")
     } else {
         crate::i18n::tr("深色")
+    }
+}
+
+/// Human readable label for the sticky notification scenario.
+fn scenario_label(scenario: &str) -> String {
+    match scenario.trim().to_ascii_lowercase().as_str() {
+        "alarm" => crate::i18n::tr("闹钟（留屏 + 循环提示音）"),
+        _ => crate::i18n::tr("提醒（留屏直到处理）"),
     }
 }

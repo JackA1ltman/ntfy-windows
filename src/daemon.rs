@@ -507,10 +507,26 @@ async fn build_toast(
     let priority = message.priority();
     let n = &config.notification;
 
+    let silent = !n.sound || priority <= 1;
+    // Sticky scenarios keep the toast on screen until the user handles it.
+    // `alarm` additionally loops the sound, so fall back to `reminder` when
+    // notifications are silent.
+    let scenario = if n.sticky_min_priority >= 1 && priority >= n.sticky_min_priority {
+        let requested = n.sticky_scenario.trim().to_ascii_lowercase();
+        if requested == "alarm" && !silent {
+            Some("alarm".to_string())
+        } else {
+            Some("reminder".to_string())
+        }
+    } else {
+        None
+    };
+
     let mut content = ToastContent {
         priority,
-        silent: !n.sound || priority <= 1,
+        silent,
         long_duration: priority >= 4,
+        scenario,
         ..Default::default()
     };
 

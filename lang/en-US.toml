@@ -84,6 +84,10 @@
 "启用 Windows 通知" = "Enable Windows notifications"
 "最低显示优先级" = "Minimum priority"
 "播放提示音" = "Play sound"
+"常驻屏幕最低优先级（0 = 关闭）" = "Sticky min priority (0 = off)"
+"常驻通知类型" = "Sticky scenario"
+"提醒（留屏直到处理）" = "Reminder (stays until handled)"
+"闹钟（留屏 + 循环提示音）" = "Alarm (stays + looping sound)"
 "显示附件图片" = "Show attachment images"
 "下载并显示图标" = "Download and show icons"
 "最大图片大小 (MB)" = "Max image size (MB)"
@@ -229,6 +233,8 @@
 "保存附件文件失败 {path}: {err}" = "Failed to save attachment file {path}: {err}"
 "发送 Windows 通知失败: {err}" = "Failed to send Windows notification: {err}"
 "打开" = "Open"
+"忽略" = "Dismiss"
+"稍后提醒" = "Snooze"
 
 # ---- logs: ntfy client ----
 "订阅 {url} (transport={transport})" = "Subscribing {url} (transport={transport})"

@@ -190,7 +190,9 @@ Default path: `<program dir>\config.json` (or `--config`; legacy `.toml` files a
     "image_dir": "",
     "save_files": true,
     "files_dir": "",
-    "max_file_mb": 20
+    "max_file_mb": 20,
+    "sticky_min_priority": 5,
+    "sticky_scenario": "reminder"
   },
   "ui": {
     "theme": "dark",
@@ -325,6 +327,8 @@ cargo wix
 
 - `notification.sound = false` mutes everything.
 - `notification.min_priority` filters out lower priorities.
+- Notifications at or above `notification.sticky_min_priority` (default 5) stay on screen
+  until handled, using `scenario="reminder"` or `"alarm"` (alarm also loops the sound).
 - Known emoji tags are added to the title; unknown tags are appended as `#tag`.
 - `click` becomes the toast body click action; `view` actions become toast buttons.
   `broadcast` (Android) and `http` actions are ignored on Windows.
