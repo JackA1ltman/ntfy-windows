@@ -46,7 +46,7 @@ plus a headless tray mode.
 - **Authentication**: Basic Auth and Bearer token for private topics.
 - **GUI (egui / eframe)**: server / auth / topics / notification options / log level,
   connection status and stats, filterable history, live logs, manual reconnect, history
-  clearing, export, test notification, auto-start toggle.
+  clearing, export (native save dialog), test notification, auto-start toggle.
 - **System tray**: GUI mode hides to tray on close; `--no-gui` is a **tray-only background**
   mode with no GUI window (near-zero CPU). Right-click for show / reconnect / test /
   open config / quit.
@@ -56,9 +56,12 @@ plus a headless tray mode.
   `%APPDATA%\ntfy-windows\config.json`); legacy `config.toml` is migrated automatically.
 - **CJK fonts**: system CJK fonts (Microsoft YaHei / SimHei, …) are loaded automatically.
 - **Logging**: `tracing` + `tracing-subscriber`, daily rolling files mirrored into the GUI.
-- **Attachment images**: previewed in the toast and archived to a persistent folder
-  (default `%LOCALAPPDATA%\ntfy-windows\images`, named like `20261009-215349_laptop_photo.jpg`),
-  openable from the history.
+- **Attachment images**: previewed in the toast and saved directly into a persistent folder
+  (default `%LOCALAPPDATA%\ntfy-windows\images`, named like `20261009-215349_laptop_photo.jpg`);
+  toast icons are cached under `images\icons\`. Openable from the history.
+- **Attachment files**: ntfy can send arbitrary files; non-image attachments are stored
+  verbatim under `%LOCALAPPDATA%\ntfy-windows\files` (named `time_topic_name.ext`), openable
+  from the history.
 - **i18n**: independent language files, Chinese and English built in.
 
 > ntfy **attachments require `attachment-cache-dir` on the server** (enabled on ntfy.sh).
@@ -184,7 +187,10 @@ Default path: `<program dir>\config.json` (or `--config`; legacy `.toml` files a
     "app_icon": "",
     "ignore_topics": "",
     "save_images": true,
-    "image_dir": ""
+    "image_dir": "",
+    "save_files": true,
+    "files_dir": "",
+    "max_file_mb": 20
   },
   "ui": {
     "theme": "dark",
@@ -205,10 +211,10 @@ Data locations:
 | --- | --- |
 | Config | `<program dir>\config.json` (fallback: `%APPDATA%\ntfy-windows\config.json`) |
 | History | `%APPDATA%\ntfy-windows\history.json` |
-| Logs | `%LOCALAPPDATA%\ntfy-windows\logs\ntfy-windows.log.YYYY-MM-DD` |
-| Image cache | `%LOCALAPPDATA%\ntfy-windows\cache\` |
-| Image archive | `<image_dir>` (default `%LOCALAPPDATA%\ntfy-windows\images\`) |
-| Exports | `%LOCALAPPDATA%\ntfy-windows\exports\` |
+| Logs | `%LOCALAPPDATA%\ntfy-windows\logs\ntfy-windows.YYYY-MM-DD.log` |
+| Images | `<image_dir>` (default `%LOCALAPPDATA%\ntfy-windows\images\`; toast icons under `images\icons\`) |
+| Files | `<files_dir>` (default `%LOCALAPPDATA%\ntfy-windows\files\`) |
+| Exports | chosen via the native save dialog when you click "Export" (no fixed folder) |
 
 ---
 
@@ -333,7 +339,7 @@ cargo wix
 | Repeated "connection closed immediately" | Usually a reverse proxy / Cloudflare buffering the NDJSON stream. Set `transport` to `sse` / `ws` (or keep `auto`). |
 | Logs show an HTML page | The request hit the ntfy web UI, not the API. Check `base_url` (self-hosted subpaths) — the URL must look like `/{topic}/json`. |
 | Tray left-click does nothing | Left-click shows the window, right-click opens the menu. Enable `debug` logs to see tray events. |
-| Attachment image not shown | The server must enable attachments; images are downloaded and re-encoded. Check "已缓存通知图片" / failure logs. |
+| Attachment image not shown | The server must enable attachments; images are downloaded and re-encoded into `images`. Check the "Saved notification image" / failure logs. |
 | GUI high CPU in background | Use `--cpu-debug` to see CPU / repaint rate, or use `--no-gui` for long-running background use. |
 | TLS errors | For self-signed certs you may temporarily set `insecure_tls` (not recommended). |
 | Auto-start not working | Run `--install-autostart`; check `HKCU\...\Run`; use an absolute path. |

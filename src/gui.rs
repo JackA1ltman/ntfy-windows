@@ -185,6 +185,7 @@ impl GuiApp {
         apply_theme(&self.ctx, &self.draft.ui.theme);
         setup_fonts(&self.ctx, &self.draft.ui.font_path);
         crate::i18n::set_language(&self.draft.ui.language);
+        crate::config::ensure_data_dirs(&self.draft);
         self.state.lock().config = self.draft.clone();
         let _ = self
             .cmd_tx
@@ -193,31 +194,78 @@ impl GuiApp {
         self.toast(message);
     }
 
-    fn export(&mut self) {
-        let dir = crate::config::export_dir();
-        if let Err(e) = std::fs::create_dir_all(&dir) {
+    /// Create `path` (if needed) and open it in the file manager.
+    fn open_dir(&mut self, path: std::path::PathBuf) {
+        if let Err(e) = std::fs::create_dir_all(&path) {
             let err = e.to_string();
-            let message = crate::i18n::tr_args("创建导出目录失败: {err}", &[("err", err.as_str())]);
+            let p = path.display().to_string();
+            let message = crate::i18n::tr_args(
+                "创建目录失败 {path}: {err}",
+                &[("path", p.as_str()), ("err", err.as_str())],
+            );
             self.toast(message);
             return;
         }
-        let stamp = chrono::Local::now().format("%Y%m%d-%H%M%S");
-        let history_path = dir.join(format!("history-{stamp}.json"));
-        let logs_path = dir.join(format!("logs-{stamp}.log"));
+        if let Err(e) = open::that(&path) {
+            let err = e.to_string();
+            let p = path.display().to_string();
+            let message = crate::i18n::tr_args(
+                "打开目录失败 {path}: {err}",
+                &[("path", p.as_str()), ("err", err.as_str())],
+            );
+            self.toast(message);
+        }
+    }
 
+    /// Export the notification history to a file chosen by the user.
+    fn export_history(&mut self) {
+        let stamp = chrono::Local::now().format("%Y%m%d-%H%M%S");
+        let Some(path) = rfd::FileDialog::new()
+            .set_title(crate::i18n::tr("导出历史"))
+            .set_file_name(format!("history-{stamp}.json"))
+            .add_filter("JSON", &["json"])
+            .save_file()
+        else {
+            return;
+        };
         let entries: Vec<_> = self.state.lock().history.iter().cloned().collect();
-        match serde_json::to_string_pretty(&entries) {
-            Ok(text) => {
-                let _ = std::fs::write(&history_path, text);
-            }
+        let text = match serde_json::to_string_pretty(&entries) {
+            Ok(text) => text,
             Err(e) => {
                 let err = e.to_string();
-                let message = crate::i18n::tr_args("导出历史失败: {err}", &[("err", err.as_str())]);
+                let message =
+                    crate::i18n::tr_args("导出历史失败: {err}", &[("err", err.as_str())]);
                 self.toast(message);
                 return;
             }
+        };
+        match std::fs::write(&path, text) {
+            Ok(()) => {
+                let path_str = path.display().to_string();
+                let message =
+                    crate::i18n::tr_args("已导出到 {path}", &[("path", path_str.as_str())]);
+                self.toast(message);
+            }
+            Err(e) => {
+                let err = e.to_string();
+                let message =
+                    crate::i18n::tr_args("导出历史失败: {err}", &[("err", err.as_str())]);
+                self.toast(message);
+            }
         }
+    }
 
+    /// Export the in-memory logs to a file chosen by the user.
+    fn export_logs(&mut self) {
+        let stamp = chrono::Local::now().format("%Y%m%d-%H%M%S");
+        let Some(path) = rfd::FileDialog::new()
+            .set_title(crate::i18n::tr("导出日志"))
+            .set_file_name(format!("logs-{stamp}.log"))
+            .add_filter(crate::i18n::tr("日志"), &["log", "txt"])
+            .save_file()
+        else {
+            return;
+        };
         let logs = self
             .state
             .logs()
@@ -233,12 +281,20 @@ impl GuiApp {
             })
             .collect::<Vec<_>>()
             .join("\n");
-        let _ = std::fs::write(&logs_path, logs);
-
-        let _ = open::that(&dir);
-        let path = dir.display().to_string();
-        let message = crate::i18n::tr_args("已导出到 {path}", &[("path", path.as_str())]);
-        self.toast(message);
+        match std::fs::write(&path, logs) {
+            Ok(()) => {
+                let path_str = path.display().to_string();
+                let message =
+                    crate::i18n::tr_args("已导出到 {path}", &[("path", path_str.as_str())]);
+                self.toast(message);
+            }
+            Err(e) => {
+                let err = e.to_string();
+                let message =
+                    crate::i18n::tr_args("导出日志失败: {err}", &[("err", err.as_str())]);
+                self.toast(message);
+            }
+        }
     }
 
     fn render_toast(&mut self, ctx: &egui::Context) {
@@ -469,22 +525,28 @@ impl GuiApp {
                 self.toast(message);
             }
             if ui
-                .button(format!("📤 {}", crate::i18n::tr("导出历史/日志")))
+                .button(format!("📤 {}", crate::i18n::tr("导出历史")))
                 .clicked()
             {
-                self.export();
+                self.export_history();
             }
             if ui
                 .button(format!("📂 {}", crate::i18n::tr("打开数据目录")))
                 .clicked()
             {
-                let _ = open::that(crate::config::localappdata_dir());
+                self.open_dir(crate::config::localappdata_dir());
             }
             if ui
                 .button(format!("🖼 {}", crate::i18n::tr("打开图片目录")))
                 .clicked()
             {
-                let _ = open::that(self.draft.notification.image_dir_path());
+                self.open_dir(self.draft.notification.image_dir_path());
+            }
+            if ui
+                .button(format!("📎 {}", crate::i18n::tr("打开文件目录")))
+                .clicked()
+            {
+                self.open_dir(self.draft.notification.files_dir_path());
             }
         });
 
@@ -719,6 +781,21 @@ impl GuiApp {
                     ui.weak(crate::i18n::tr(
                         "留空则使用默认目录 %LOCALAPPDATA%\\ntfy-windows\\images。文件名格式：时间_主题_原始名。",
                     ));
+                    ui.checkbox(
+                        &mut self.draft.notification.save_files,
+                        crate::i18n::tr("保存收到的其他文件到本地目录"),
+                    );
+                    ui.horizontal(|ui| {
+                        ui.label(crate::i18n::tr("文件保存目录:"));
+                        ui.text_edit_singleline(&mut self.draft.notification.files_dir);
+                    });
+                    ui.weak(crate::i18n::tr(
+                        "留空则使用默认目录 %LOCALAPPDATA%\\ntfy-windows\\files。",
+                    ));
+                    ui.add(
+                        egui::Slider::new(&mut self.draft.notification.max_file_mb, 1..=200)
+                            .text(crate::i18n::tr("最大文件大小 (MB)")),
+                    );
                 });
 
                 ui.collapsing(crate::i18n::tr("界面与日志"), |ui| {
@@ -808,7 +885,7 @@ impl GuiApp {
                 .button(format!("📤 {}", crate::i18n::tr("导出")))
                 .clicked()
             {
-                self.export();
+                self.export_history();
             }
         });
 
@@ -891,6 +968,24 @@ impl GuiApp {
                                 }
                             });
                         }
+                        if let Some(path) = &entry.file_path {
+                            ui.horizontal(|ui| {
+                                if ui
+                                    .small_button(format!("📎 {}", crate::i18n::tr("打开文件")))
+                                    .clicked()
+                                {
+                                    let _ = open::that(path);
+                                }
+                                if ui
+                                    .small_button(format!("📂 {}", crate::i18n::tr("打开所在文件夹")))
+                                    .clicked()
+                                {
+                                    if let Some(parent) = std::path::Path::new(path).parent() {
+                                        let _ = open::that(parent);
+                                    }
+                                }
+                            });
+                        }
                         if !entry.tags.is_empty() {
                             ui.weak(
                                 entry
@@ -923,13 +1018,13 @@ impl GuiApp {
                 .button(format!("📤 {}", crate::i18n::tr("导出日志")))
                 .clicked()
             {
-                self.export();
+                self.export_logs();
             }
             if ui
                 .button(format!("📂 {}", crate::i18n::tr("打开日志目录")))
                 .clicked()
             {
-                let _ = open::that(crate::config::log_dir());
+                self.open_dir(crate::config::log_dir());
             }
         });
         let log_dir = crate::config::log_dir().display().to_string();
@@ -982,6 +1077,10 @@ impl GuiApp {
             &[("path", log_dir.as_str())],
         ));
         ui.add_space(8.0);
+        ui.hyperlink_to(
+            crate::i18n::tr("项目 GitHub"),
+            "https://github.com/JackA1ltman/ntfy-windows",
+        );
         ui.hyperlink_to(crate::i18n::tr("ntfy 官方文档"), "https://docs.ntfy.sh/");
         ui.hyperlink_to(
             crate::i18n::tr("ntfy GitHub"),

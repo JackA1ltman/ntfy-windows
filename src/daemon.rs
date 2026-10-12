@@ -21,7 +21,6 @@ pub struct Daemon {
     pub notifier: Arc<WindowsNotifier>,
     pub cmd_rx: mpsc::UnboundedReceiver<Command>,
     pub cancel: CancellationToken,
-    pub cache_dir: PathBuf,
     pub http: reqwest::Client,
 }
 
@@ -55,14 +54,13 @@ impl Daemon {
 
             let state = self.state.clone();
             let notifier = self.notifier.clone();
-            let cache = self.cache_dir.clone();
             let http = self.http.clone();
             let topics = config.topics.clone();
             let cfg = config.clone();
             let stream_cancel = cancel.clone();
 
             let task = tokio::spawn(async move {
-                stream_loop(state, notifier, client, cfg, topics, stream_cancel, cache, http).await;
+                stream_loop(state, notifier, client, cfg, topics, stream_cancel, http).await;
             });
 
             loop {
@@ -96,11 +94,10 @@ impl Daemon {
                                 let message = test_message(&config);
                                 let state = self.state.clone();
                                 let notifier = self.notifier.clone();
-                                let cache = self.cache_dir.clone();
                                 let http = self.http.clone();
                                 let cfg = config.clone();
                                 tokio::spawn(async move {
-                                    handle_message(state, notifier, &cfg, &cache, &http, message).await;
+                                    handle_message(state, notifier, &cfg, &http, message).await;
                                 });
                             }
                             Some(Command::Shutdown) | None => {
@@ -131,7 +128,6 @@ async fn stream_loop(
     config: Config,
     topics: Vec<String>,
     cancel: CancellationToken,
-    cache_dir: PathBuf,
     http: reqwest::Client,
 ) {
     let initial = Duration::from_secs(config.connection.retry_initial_secs.max(1));
@@ -173,7 +169,6 @@ async fn stream_loop(
                 config.clone(),
                 topics.clone(),
                 cancel.clone(),
-                cache_dir.clone(),
                 http.clone(),
             )
             .await;
@@ -203,7 +198,6 @@ async fn stream_loop(
         let msg_state = state.clone();
         let msg_notifier = notifier.clone();
         let msg_config = config.clone();
-        let msg_cache = cache_dir.clone();
         let msg_http = http.clone();
 
         let on_open = move || {
@@ -221,10 +215,9 @@ async fn stream_loop(
             let state = msg_state.clone();
             let notifier = msg_notifier.clone();
             let config = msg_config.clone();
-            let cache = msg_cache.clone();
             let http = msg_http.clone();
             async move {
-                handle_message(state, notifier, &config, &cache, &http, message).await;
+                handle_message(state, notifier, &config, &http, message).await;
             }
         };
 
@@ -344,7 +337,6 @@ async fn poll_loop(
     config: Config,
     topics: Vec<String>,
     cancel: CancellationToken,
-    cache_dir: PathBuf,
     http: reqwest::Client,
 ) {
     let interval = Duration::from_secs(config.connection.poll_interval_secs.max(1));
@@ -377,17 +369,15 @@ async fn poll_loop(
         let st = state.clone();
         let nt = notifier.clone();
         let cfg = config.clone();
-        let cache = cache_dir.clone();
         let dl = http.clone();
         let result = client
             .poll(&topics, since, &cancel, move |message: NtfyMessage| {
                 let st = st.clone();
                 let nt = nt.clone();
                 let cfg = cfg.clone();
-                let cache = cache.clone();
                 let dl = dl.clone();
                 async move {
-                    handle_message(st, nt, &cfg, &cache, &dl, message).await;
+                    handle_message(st, nt, &cfg, &dl, message).await;
                 }
             })
             .await;
@@ -430,7 +420,6 @@ async fn handle_message(
     state: SharedState,
     notifier: Arc<WindowsNotifier>,
     config: &Config,
-    cache_dir: &Path,
     http: &reqwest::Client,
     message: NtfyMessage,
 ) {
@@ -455,31 +444,36 @@ async fn handle_message(
         crate::i18n::tr("收到 ntfy 通知")
     );
 
-    // Download the attachment image once (for display and/or archiving).
-    let image_url = message
-        .attachment
-        .as_ref()
-        .filter(|a| a.is_image())
+    let attachment = message.attachment.as_ref();
+    let url = attachment
         .and_then(|a| a.url.as_deref())
         .filter(|u| !u.is_empty());
-    let need_image = image_url.is_some() && (n.save_images || (n.enabled && n.show_attachments));
-    let mut cached_image: Option<PathBuf> = None;
-    if need_image {
-        if let Some(url) = image_url {
-            cached_image = download_image(http, cache_dir, url, n.max_image_mb).await;
-        }
-    }
+    let is_image = attachment.map(|a| a.is_image()).unwrap_or(false);
 
-    // Archive a persistent copy with a descriptive name.
     let mut saved_image: Option<PathBuf> = None;
-    if n.save_images {
-        if let Some(src) = cached_image.as_deref() {
-            let image_dir = n.image_dir_path();
-            saved_image = archive_image(src, &message, &image_dir).await;
+    let mut saved_file: Option<PathBuf> = None;
+
+    if let Some(url) = url {
+        if is_image {
+            // Images are normalised and written straight into the images folder
+            // (used as the toast hero image and/or kept as an archive).
+            if n.save_images || (n.enabled && n.show_attachments) {
+                let stem = attachment_stem(&message);
+                saved_image =
+                    fetch_image(http, &n.image_dir_path(), url, n.max_image_mb, &stem).await;
+            }
+        } else if n.save_files {
+            // Non-image attachments are stored verbatim in the files folder.
+            let name = attachment_file_name(&message);
+            saved_file = fetch_file(http, &n.files_dir_path(), url, n.max_file_mb, &name).await;
         }
     }
 
-    state.add_history(HistoryEntry::from_message(&message, saved_image.as_deref()));
+    state.add_history(HistoryEntry::from_message(
+        &message,
+        saved_image.as_deref(),
+        saved_file.as_deref(),
+    ));
 
     if !n.enabled {
         return;
@@ -488,7 +482,7 @@ async fn handle_message(
         return;
     }
 
-    let content = build_toast(config, cache_dir, http, &message, cached_image).await;
+    let content = build_toast(config, http, &message, saved_image).await;
     match notifier.show(content) {
         Ok(()) => state.inc_shown(),
         Err(e) => {
@@ -506,7 +500,6 @@ async fn handle_message(
 /// downloaded (see `handle_message`); the icon is downloaded here.
 async fn build_toast(
     config: &Config,
-    cache_dir: &Path,
     http: &reqwest::Client,
     message: &NtfyMessage,
     hero_image: Option<PathBuf>,
@@ -572,7 +565,8 @@ async fn build_toast(
     if n.download_images {
         if let Some(icon) = message.icon.as_deref() {
             if !icon.is_empty() {
-                if let Some(path) = download_image(http, cache_dir, icon, n.max_image_mb).await {
+                let icon_dir = n.image_dir_path().join("icons");
+                if let Some(path) = fetch_icon(http, &icon_dir, icon, n.max_image_mb).await {
                     content.app_logo = Some(path);
                 }
             }
@@ -613,20 +607,21 @@ async fn build_toast(
     content
 }
 
-/// Download an image into the cache directory. Returns `None` on any failure so
-/// that a missing preview never blocks the notification itself.
+/// Download an image, normalise it and write it into `dir` using `name_stem`
+/// as the file name (the extension is derived from the encoded format).
+/// Returns `None` on any failure so that a missing preview never blocks the
+/// notification itself.
 ///
 /// The image is decoded and re-encoded (PNG for transparent images, JPEG
 /// otherwise) and downscaled so that Windows Toast always accepts it,
 /// regardless of the source format or size.
-async fn download_image(
+async fn fetch_image(
     http: &reqwest::Client,
-    cache_dir: &Path,
+    dir: &Path,
     url: &str,
     max_mb: u64,
+    name_stem: &str,
 ) -> Option<PathBuf> {
-    use std::hash::{Hash, Hasher};
-
     let response = match http.get(url).send().await {
         Ok(r) => r,
         Err(e) => {
@@ -735,24 +730,28 @@ async fn download_image(
         }
     };
 
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    url.hash(&mut hasher);
-    let name = format!("{:016x}.{}", hasher.finish(), ext);
-    let path = cache_dir.join(name);
-
-    if let Err(e) = tokio::fs::create_dir_all(cache_dir).await {
+    if let Err(e) = tokio::fs::create_dir_all(dir).await {
         let err = e.to_string();
+        let dir_str = dir.display().to_string();
         warn!(
             "{}",
-            crate::i18n::tr_args("创建缓存目录失败: {err}", &[("err", err.as_str())])
+            crate::i18n::tr_args(
+                "创建图片保存目录失败 {path}: {err}",
+                &[("path", dir_str.as_str()), ("err", err.as_str())]
+            )
         );
         return None;
     }
+    let path = unique_path(dir, &format!("{name_stem}.{ext}"));
     if let Err(e) = tokio::fs::write(&path, &out).await {
         let err = e.to_string();
+        let path_str = path.display().to_string();
         warn!(
             "{}",
-            crate::i18n::tr_args("写入图片缓存失败: {err}", &[("err", err.as_str())])
+            crate::i18n::tr_args(
+                "保存通知图片失败 {path}: {err}",
+                &[("path", path_str.as_str()), ("err", err.as_str())]
+            )
         );
         return None;
     }
@@ -762,32 +761,180 @@ async fn download_image(
     info!(
         "{}",
         crate::i18n::tr_args(
-            "已缓存通知图片（{bytes} 字节）: {path}",
+            "已保存通知图片（{bytes} 字节）: {path}",
             &[("bytes", bytes.as_str()), ("path", path_string.as_str())]
         )
     );
     Some(path)
 }
 
-/// Copy a cached image into the persistent archive with a descriptive name
-/// such as `20261009-215349_laptop_photo.jpg`.
-async fn archive_image(src: &Path, message: &NtfyMessage, dir: &Path) -> Option<PathBuf> {
+/// Download a non-image attachment and store it verbatim into `dir`.
+async fn fetch_file(
+    http: &reqwest::Client,
+    dir: &Path,
+    url: &str,
+    max_mb: u64,
+    file_name: &str,
+) -> Option<PathBuf> {
+    let bytes = match download_bytes(http, url, max_mb).await {
+        Ok(b) => b,
+        Err(FetchError::Request(err)) => {
+            warn!(
+                "{}",
+                crate::i18n::tr_args(
+                    "下载文件失败 {url}: {err}",
+                    &[("url", url), ("err", err.as_str())]
+                )
+            );
+            return None;
+        }
+        Err(FetchError::Status(status)) => {
+            warn!(
+                "{}",
+                crate::i18n::tr_args(
+                    "下载文件失败 {url}: HTTP {status}",
+                    &[("url", url), ("status", status.as_str())]
+                )
+            );
+            return None;
+        }
+        Err(FetchError::TooLarge { len, limit }) => {
+            let len = len.to_string();
+            let limit = limit.to_string();
+            warn!(
+                "{}",
+                crate::i18n::tr_args(
+                    "文件超过大小限制（{len} > {limit} 字节），跳过: {url}",
+                    &[("len", len.as_str()), ("limit", limit.as_str()), ("url", url)]
+                )
+            );
+            return None;
+        }
+        Err(FetchError::Read(err)) => {
+            warn!(
+                "{}",
+                crate::i18n::tr_args(
+                    "读取文件数据失败 {url}: {err}",
+                    &[("url", url), ("err", err.as_str())]
+                )
+            );
+            return None;
+        }
+    };
+
     if let Err(e) = tokio::fs::create_dir_all(dir).await {
         let err = e.to_string();
-        let path = dir.display().to_string();
+        let dir_str = dir.display().to_string();
         warn!(
             "{}",
             crate::i18n::tr_args(
-                "创建图片保存目录失败 {path}: {err}",
-                &[("path", path.as_str()), ("err", err.as_str())]
+                "创建文件保存目录失败 {path}: {err}",
+                &[("path", dir_str.as_str()), ("err", err.as_str())]
+            )
+        );
+        return None;
+    }
+    let path = unique_path(dir, file_name);
+    if let Err(e) = tokio::fs::write(&path, &bytes).await {
+        let err = e.to_string();
+        let path_str = path.display().to_string();
+        warn!(
+            "{}",
+            crate::i18n::tr_args(
+                "保存附件文件失败 {path}: {err}",
+                &[("path", path_str.as_str()), ("err", err.as_str())]
             )
         );
         return None;
     }
 
+    let size = bytes.len().to_string();
+    let path_str = path.display().to_string();
+    info!(
+        "{}",
+        crate::i18n::tr_args(
+            "已保存附件文件（{bytes} 字节）: {path}",
+            &[("bytes", size.as_str()), ("path", path_str.as_str())]
+        )
+    );
+    Some(path)
+}
+
+/// Fetch (and cache) a small icon used as the toast logo. Icons live in `dir`
+/// under a stable hash name, so repeated messages reuse the same file.
+async fn fetch_icon(
+    http: &reqwest::Client,
+    dir: &Path,
+    url: &str,
+    max_mb: u64,
+) -> Option<PathBuf> {
+    use std::hash::{Hash, Hasher};
+
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    url.hash(&mut hasher);
+    let stem = format!("icon-{:016x}", hasher.finish());
+    if let Some(existing) = find_by_stem(dir, &stem) {
+        return Some(existing);
+    }
+    fetch_image(http, dir, url, max_mb, &stem).await
+}
+
+/// Find an existing file in `dir` whose file stem equals `stem`.
+fn find_by_stem(dir: &Path, stem: &str) -> Option<PathBuf> {
+    let entries = std::fs::read_dir(dir).ok()?;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.file_stem().and_then(|s| s.to_str()) == Some(stem) {
+            return Some(path);
+        }
+    }
+    None
+}
+
+/// Shared downloader used by `fetch_image` / `fetch_file`.
+enum FetchError {
+    Request(String),
+    Status(String),
+    TooLarge { len: u64, limit: u64 },
+    Read(String),
+}
+
+async fn download_bytes(
+    http: &reqwest::Client,
+    url: &str,
+    max_mb: u64,
+) -> Result<Vec<u8>, FetchError> {
+    let response = http
+        .get(url)
+        .send()
+        .await
+        .map_err(|e| FetchError::Request(e.to_string()))?;
+    if !response.status().is_success() {
+        return Err(FetchError::Status(response.status().to_string()));
+    }
+    let limit = max_mb.max(1) * 1024 * 1024;
+    if let Some(len) = response.content_length() {
+        if len > limit {
+            return Err(FetchError::TooLarge { len, limit });
+        }
+    }
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|e| FetchError::Read(e.to_string()))?;
+    if bytes.len() as u64 > limit {
+        return Err(FetchError::TooLarge {
+            len: bytes.len() as u64,
+            limit,
+        });
+    }
+    Ok(bytes.to_vec())
+}
+
+/// Descriptive file stem for an attachment: `YYYYmmdd-HHMMSS_topic_name`.
+fn attachment_stem(message: &NtfyMessage) -> String {
     let timestamp = message.received_at().format("%Y%m%d-%H%M%S");
     let topic = sanitize_component(&message.topic);
-    let ext = src.extension().and_then(|e| e.to_str()).unwrap_or("png");
     let stem = message
         .attachment
         .as_ref()
@@ -800,35 +947,32 @@ async fn archive_image(src: &Path, message: &NtfyMessage, dir: &Path) -> Option<
         })
         .map(sanitize_component)
         .unwrap_or_default();
-
-    let file_name = if stem.is_empty() {
-        format!("{timestamp}_{topic}.{ext}")
+    if stem.is_empty() {
+        format!("{timestamp}_{topic}")
     } else {
-        format!("{timestamp}_{topic}_{stem}.{ext}")
-    };
-    let dest = unique_path(dir, &file_name);
+        format!("{timestamp}_{topic}_{stem}")
+    }
+}
 
-    match tokio::fs::copy(src, &dest).await {
-        Ok(_) => {
-            let path = dest.display().to_string();
-            info!(
-                "{}",
-                crate::i18n::tr_args("已保存通知图片: {path}", &[("path", path.as_str())])
-            );
-            Some(dest)
-        }
-        Err(e) => {
-            let err = e.to_string();
-            let path = dest.display().to_string();
-            warn!(
-                "{}",
-                crate::i18n::tr_args(
-                    "保存通知图片失败 {path}: {err}",
-                    &[("path", path.as_str()), ("err", err.as_str())]
-                )
-            );
-            None
-        }
+/// Descriptive file name (with the original extension) for a non-image file.
+fn attachment_file_name(message: &NtfyMessage) -> String {
+    let stem = attachment_stem(message);
+    let ext = message
+        .attachment
+        .as_ref()
+        .map(|a| a.name.as_str())
+        .map(|name| {
+            Path::new(name)
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("")
+        })
+        .map(sanitize_component)
+        .unwrap_or_default();
+    if ext.is_empty() {
+        stem
+    } else {
+        format!("{stem}.{ext}")
     }
 }
 
@@ -858,18 +1002,30 @@ fn unique_path(dir: &Path, file_name: &str) -> PathBuf {
         return first;
     }
     let path = Path::new(file_name);
-    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("image");
-    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("png");
-    for i in 1..10_000 {
-        let candidate = dir.join(format!("{stem}-{i}.{ext}"));
-        if !candidate.exists() {
-            return candidate;
+    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("file");
+    match path.extension().and_then(|e| e.to_str()) {
+        Some(ext) => {
+            for i in 1..10_000 {
+                let candidate = dir.join(format!("{stem}-{i}.{ext}"));
+                if !candidate.exists() {
+                    return candidate;
+                }
+            }
+            dir.join(format!(
+                "{stem}-{}.{ext}",
+                chrono::Utc::now().timestamp_millis()
+            ))
+        }
+        None => {
+            for i in 1..10_000 {
+                let candidate = dir.join(format!("{stem}-{i}"));
+                if !candidate.exists() {
+                    return candidate;
+                }
+            }
+            dir.join(format!("{stem}-{}", chrono::Utc::now().timestamp_millis()))
         }
     }
-    dir.join(format!(
-        "{stem}-{}.{ext}",
-        chrono::Utc::now().timestamp_millis()
-    ))
 }
 
 fn test_message(config: &Config) -> NtfyMessage {

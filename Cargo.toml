@@ -1,6 +1,6 @@
 [package]
 name = "ntfy-windows"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Windows notification daemon that forwards ntfy.sh notifications to native Windows toast notifications"
 license = "MIT"
@@ -8,8 +8,8 @@ readme = "README.md"
 authors = ["ntfy-windows contributors"]
 keywords = ["ntfy", "notifications", "windows", "toast", "tray"]
 categories = ["command-line-utilities", "gui"]
-# repository = "https://github.com/<your-user>/ntfy-windows"
-# homepage = "https://github.com/<your-user>/ntfy-windows"
+repository = "https://github.com/JackA1ltman/ntfy-windows"
+homepage = "https://github.com/JackA1ltman/ntfy-windows"
 rust-version = "1.77"
 
 [[bin]]
@@ -26,6 +26,7 @@ futures-util = "0.3"
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "bmp", "webp"] }
 open = "5"
 raw-window-handle = "0.6"
+rfd = "0.14"
 reqwest = { version = "0.12", features = ["json", "stream", "gzip", "brotli", "deflate"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

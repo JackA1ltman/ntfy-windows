@@ -82,9 +82,16 @@ pub fn run_headless(
             } else if event.id == test_id {
                 let _ = cmd_tx.send(Command::TestNotification);
             } else if event.id == config_id {
-                let _ = open::that(crate::config::config_path());
+                let path = crate::config::config_path();
+                if path.exists() {
+                    let _ = open::that(&path);
+                } else {
+                    let _ = open::that(crate::config::exe_dir());
+                }
             } else if event.id == data_id {
-                let _ = open::that(crate::config::localappdata_dir());
+                let dir = crate::config::localappdata_dir();
+                let _ = std::fs::create_dir_all(&dir);
+                let _ = open::that(&dir);
             } else if event.id == quit_id {
                 state.save_history();
                 std::process::exit(0);

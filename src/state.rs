@@ -60,10 +60,17 @@ pub struct HistoryEntry {
     /// Path of the archived image, if the notification had an image attachment.
     #[serde(default)]
     pub image_path: Option<String>,
+    /// Path of the archived (non-image) attachment, if any.
+    #[serde(default)]
+    pub file_path: Option<String>,
 }
 
 impl HistoryEntry {
-    pub fn from_message(msg: &NtfyMessage, image_path: Option<&Path>) -> Self {
+    pub fn from_message(
+        msg: &NtfyMessage,
+        image_path: Option<&Path>,
+        file_path: Option<&Path>,
+    ) -> Self {
         Self {
             id: msg.id.clone(),
             topic: msg.topic.clone(),
@@ -74,6 +81,7 @@ impl HistoryEntry {
             received_at: msg.received_at(),
             raw: msg.clone(),
             image_path: image_path.map(|p| p.to_string_lossy().into_owned()),
+            file_path: file_path.map(|p| p.to_string_lossy().into_owned()),
         }
     }
 }

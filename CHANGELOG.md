@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-11
+
+### Added
+
+- Non-image attachments (ntfy can send arbitrary files) are now stored verbatim in
+  `%LOCALAPPDATA%\ntfy-windows\files` (`time_topic_name.ext`) and can be opened from the history.
+- Data folders (logs / images / files) are created automatically at startup and whenever the
+  configuration is saved; the GUI also creates them right before opening, so the "open folder"
+  buttons always work.
+- "Open files folder" button on the dashboard, plus file / folder buttons on history entries.
+- New `notification` options: `save_files`, `files_dir` and `max_file_mb`.
+- About page: link to the project repository.
+
+### Changed
+
+- Images are now written **directly** into the images folder; the separate `cache` folder was
+  removed. Toast icons are cached under `images\icons\` and reused by URL hash.
+- "Export history" / "Export logs" now open a **native save dialog** so you choose the destination;
+  the fixed `exports` folder was removed. The "open log folder" button is kept.
+- Log files now use a `.log` suffix: `ntfy-windows.YYYY-MM-DD.log`
+  (previously `ntfy-windows.log.YYYY-MM-DD`).
+- GUI log view **and** the log file now follow the selected UI language.
+
+### Fixed
+
+- Clicking "Open files folder" (or any data folder) did nothing when the folder did not exist yet.
+
 ## [0.1.0] - 2026-10-10
 
 ### Added
@@ -31,5 +58,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CPU / repaint diagnostics (`--cpu-debug`).
 - i18n with independent language files; Chinese and English built in.
 
-[Unreleased]: https://github.com/YOUR_USER/ntfy-windows/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/YOUR_USER/ntfy-windows/releases/tag/v0.1.0
+[Unreleased]: https://github.com/JackA1ltman/ntfy-windows/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/JackA1ltman/ntfy-windows/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/JackA1ltman/ntfy-windows/releases/tag/v0.1.0

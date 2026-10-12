@@ -102,10 +102,16 @@ pub struct NotificationConfig {
     pub app_id: String,
     pub app_icon: String,
     pub ignore_topics: String,
-    /// Persistently save received attachment images to disk.
+    /// Save received attachment images to the images folder.
     pub save_images: bool,
     /// Directory for saved images. Empty = default (`%LOCALAPPDATA%\ntfy-windows\images`).
     pub image_dir: String,
+    /// Save received non-image attachments to the files folder.
+    pub save_files: bool,
+    /// Directory for saved files. Empty = default (`%LOCALAPPDATA%\ntfy-windows\files`).
+    pub files_dir: String,
+    /// Maximum size of a saved file attachment, in MB.
+    pub max_file_mb: u64,
 }
 
 impl Default for NotificationConfig {
@@ -123,6 +129,9 @@ impl Default for NotificationConfig {
             ignore_topics: String::new(),
             save_images: true,
             image_dir: String::new(),
+            save_files: true,
+            files_dir: String::new(),
+            max_file_mb: 20,
         }
     }
 }
@@ -143,6 +152,16 @@ impl NotificationConfig {
         let custom = self.image_dir.trim();
         if custom.is_empty() {
             images_dir()
+        } else {
+            PathBuf::from(custom)
+        }
+    }
+
+    /// Directory where received (non-image) files are archived.
+    pub fn files_dir_path(&self) -> PathBuf {
+        let custom = self.files_dir.trim();
+        if custom.is_empty() {
+            files_dir()
         } else {
             PathBuf::from(custom)
         }
@@ -374,15 +393,37 @@ pub fn log_dir() -> PathBuf {
     localappdata_dir().join("logs")
 }
 
-pub fn cache_dir() -> PathBuf {
-    localappdata_dir().join("cache")
-}
-
-pub fn export_dir() -> PathBuf {
-    localappdata_dir().join("exports")
-}
-
 /// Default directory for archived notification images.
 pub fn images_dir() -> PathBuf {
     localappdata_dir().join("images")
+}
+
+/// Default directory for archived (non-image) attachment files.
+pub fn files_dir() -> PathBuf {
+    localappdata_dir().join("files")
+}
+
+/// Ensure the data directories (logs, images, files) exist.
+///
+/// Called at startup so that the "open folder" actions always have a target
+/// (opening a non-existent folder otherwise silently does nothing).
+pub fn ensure_data_dirs(config: &Config) {
+    let dirs = [
+        log_dir(),
+        config.notification.image_dir_path(),
+        config.notification.files_dir_path(),
+    ];
+    for dir in dirs {
+        if let Err(e) = std::fs::create_dir_all(&dir) {
+            let err = e.to_string();
+            let path = dir.display().to_string();
+            tracing::warn!(
+                "{}",
+                crate::i18n::tr_args(
+                    "创建目录失败 {path}: {err}",
+                    &[("path", path.as_str()), ("err", err.as_str())]
+                )
+            );
+        }
+    }
 }

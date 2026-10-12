@@ -68,7 +68,18 @@ pub fn init(state: SharedState, level: &str) -> Option<WorkerGuard> {
         return None;
     }
 
-    let file_appender = tracing_appender::rolling::daily(&dir, "ntfy-windows.log");
+    let file_appender = match tracing_appender::rolling::RollingFileAppender::builder()
+        .rotation(tracing_appender::rolling::Rotation::DAILY)
+        .filename_prefix("ntfy-windows")
+        .filename_suffix("log")
+        .build(&dir)
+    {
+        Ok(appender) => appender,
+        Err(e) => {
+            eprintln!("创建日志文件失败: {e}");
+            return None;
+        }
+    };
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 
     let filter = tracing_subscriber::EnvFilter::try_from_default_env()

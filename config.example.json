@@ -30,7 +30,10 @@
     "app_icon": "",
     "ignore_topics": "",
     "save_images": true,
-    "image_dir": ""
+    "image_dir": "",
+    "save_files": true,
+    "files_dir": "",
+    "max_file_mb": 20
   },
   "ui": {
     "theme": "dark",

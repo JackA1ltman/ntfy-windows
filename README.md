@@ -45,7 +45,7 @@
 - **GUI（egui / eframe）**：
   - 配置服务器地址、认证方式、主题列表、通知选项、日志级别。
   - 显示连接状态、统计信息、按主题 / 关键字过滤的通知历史、实时日志。
-  - 一键手动重连、清空历史、导出历史与日志、测试通知、开机自启开关。
+  - 一键手动重连、清空历史、导出历史 / 日志（弹窗自选保存位置）、测试通知、开机自启开关。
 - **系统托盘**：支持两种模式——GUI 模式关闭窗口隐藏到托盘；`--no-gui` 为**纯托盘后台**（无 GUI 窗口，
   CPU 接近 0）。右键托盘可显示窗口 / 重连 / 测试通知 / 打开配置 / 退出。
 - **低占用**：GUI 采用事件驱动重绘（空闲时几乎不重绘），并提供 `--cpu-debug` 诊断；
@@ -54,9 +54,12 @@
   `%APPDATA%\ntfy-windows\config.json`），首次启动会自动从旧版 `config.toml` 迁移。
 - **中文字体**：自动加载系统中文字体（微软雅黑 / 黑体等），GUI 不再显示方块。
 - **日志**：`tracing` + `tracing-subscriber`，按天滚动写入文件，并同步显示在 GUI。
-- **图片附件预览**：自动下载图片附件与图标到本地缓存，并作为 Toast 主图 / 圆角图标显示。
-- **图片归档**：收到的图片会另存一份到持久目录（默认 `%LOCALAPPDATA%\ntfy-windows\images`，文件名如
+- **图片附件预览**：自动下载图片附件与图标，并作为 Toast 主图 / 圆角图标显示（图标缓存在
+  `images\icons` 子目录，按哈希复用）。
+- **图片归档**：收到的图片会直接保存到持久目录（默认 `%LOCALAPPDATA%\ntfy-windows\images`，文件名如
   `20261009-215349_laptop_photo.jpg`），历史记录中可一键打开图片或所在文件夹。
+- **文件归档**：ntfy 支持发送任意文件；非图片附件会原样保存到 `%LOCALAPPDATA%\ntfy-windows\files`
+  （文件名 `时间_主题_原名.ext`），历史记录中可一键打开或定位。
 
 > 提示：ntfy 的**附件功能需要服务器端开启** `attachment-cache-dir`（官方 ntfy.sh 已开启）。
 > 私有服务器请参考 ntfy 官方文档配置。
@@ -186,7 +189,10 @@ cargo build --release
     "app_icon": "",
     "ignore_topics": "",
     "save_images": true,
-    "image_dir": ""
+    "image_dir": "",
+    "save_files": true,
+    "files_dir": "",
+    "max_file_mb": 20
   },
   "ui": {
     "theme": "dark",
@@ -207,10 +213,10 @@ cargo build --release
 | --- | --- |
 | 配置 | `<程序目录>\config.json`（回退：`%APPDATA%\ntfy-windows\config.json`） |
 | 历史 | `%APPDATA%\ntfy-windows\history.json` |
-| 日志 | `%LOCALAPPDATA%\ntfy-windows\logs\ntfy-windows.log.YYYY-MM-DD` |
-| 图片缓存 | `%LOCALAPPDATA%\ntfy-windows\cache\` |
-| 图片归档 | `<image_dir>`（默认 `%LOCALAPPDATA%\ntfy-windows\images\`，文件名 `时间_主题_原名.jpg`） |
-| 导出 | `%LOCALAPPDATA%\ntfy-windows\exports\` |
+| 日志 | `%LOCALAPPDATA%\ntfy-windows\logs\ntfy-windows.YYYY-MM-DD.log` |
+| 图片 | `<image_dir>`（默认 `%LOCALAPPDATA%\ntfy-windows\images\`，文件名 `时间_主题_原名.jpg`；图标在 `images\icons\`） |
+| 文件 | `<files_dir>`（默认 `%LOCALAPPDATA%\ntfy-windows\files\`，文件名 `时间_主题_原名.ext`） |
+| 导出 | 点击「导出」时由系统保存对话框选择保存位置（不再写入固定目录） |
 
 ---
 
@@ -360,7 +366,7 @@ cargo wix
 | 日志反复出现「连接被立即关闭」 | 多为反向代理 / Cloudflare 缓冲或丢弃 NDJSON 流。`transport` 设为 `sse` / `ws`（或保持 `auto`）即可；也可在反向代理中关闭响应缓冲。 |
 | 日志出现「返回了 HTML 页面」/ `<!doctype html>` | 请求打到了 ntfy 的 Web 前端而非 API。请确认 `base_url` 正确（自建服务器若挂载在子路径，需写成 `https://host/子路径`），且订阅 URL 形如 `/{topic}/json`。 |
 | 托盘左键无反应 | 现在左键单击显示窗口、右键打开菜单。若仍无效，把日志级别设为 `debug`，看是否有「托盘图标事件 / 托盘菜单事件」。 |
-| 通知不显示图片 | 需服务器开启附件缓存；程序会下载并转码为小尺寸 PNG/JPEG。日志会打印「已缓存通知图片」或失败原因；图片过大/格式不支持的会被跳过。 |
+| 通知不显示图片 | 需服务器开启附件缓存；程序会下载并转码为小尺寸 PNG/JPEG 保存到 `images`。日志会打印「已保存通知图片」或失败原因；图片过大/格式不支持的会被跳过。 |
 | 没有弹出 Toast | 检查 Windows「设置 → 系统 → 通知」是否允许；检查 `app_id` 是否正确注册；查看日志中的 toast 错误。 |
 | 附件图片不显示 | 确认 ntfy 服务器开启了附件缓存；图片可能超过 Toast 限制（建议 < 200KB）；查看 `max_image_mb`。 |
 | TLS 报错 | 自建服务器使用自签名证书时可临时开启 `insecure_tls`（不推荐长期使用）。 |

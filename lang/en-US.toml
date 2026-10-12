@@ -41,8 +41,10 @@
 "立即重连" = "Reconnect now"
 "清空历史" = "Clear history"
 "导出历史/日志" = "Export history/logs"
+"导出历史" = "Export history"
 "打开数据目录" = "Open data folder"
 "打开图片目录" = "Open images folder"
+"打开文件目录" = "Open files folder"
 "当前订阅" = "Subscribed topics"
 "尚未订阅任何主题，请到“订阅主题”页面添加。" = "No topics subscribed yet. Add one in the Topics tab."
 
@@ -93,6 +95,10 @@
 "保存收到的图片到本地目录" = "Save received images to a local folder"
 "图片保存目录:" = "Image folder:"
 "留空则使用默认目录 %LOCALAPPDATA%\\ntfy-windows\\images。文件名格式：时间_主题_原始名。" = "Empty = default %LOCALAPPDATA%\\ntfy-windows\\images. File name: time_topic_originalname."
+"保存收到的其他文件到本地目录" = "Save other received files to a local folder"
+"文件保存目录:" = "Files folder:"
+"留空则使用默认目录 %LOCALAPPDATA%\\ntfy-windows\\files。" = "Empty = default %LOCALAPPDATA%\\ntfy-windows\\files."
+"最大文件大小 (MB)" = "Max file size (MB)"
 "界面与日志" = "UI & Logs"
 "界面主题" = "Theme"
 "深色" = "Dark"
@@ -116,6 +122,7 @@
 "主题:" = "Topic:"
 "全部" = "All"
 "打开图片" = "Open image"
+"打开文件" = "Open file"
 "打开所在文件夹" = "Open containing folder"
 "没有匹配的通知记录。" = "No matching notifications."
 "历史已清空" = "History cleared"
@@ -123,6 +130,7 @@
 # ---- logs ----
 "清空显示" = "Clear view"
 "导出日志" = "Export logs"
+"日志" = "Log"
 "打开日志目录" = "Open log folder"
 "日志目录: {path}" = "Log folder: {path}"
 "暂无日志。" = "No logs yet."
@@ -135,6 +143,7 @@
 "数据目录: {path}" = "Data folder: {path}"
 "ntfy 官方文档" = "ntfy documentation"
 "ntfy GitHub" = "ntfy on GitHub"
+"项目 GitHub" = "Project on GitHub"
 "使用 Rust + tokio + reqwest + egui + Windows Toast API 构建。" = "Built with Rust + tokio + reqwest + egui + Windows Toast API."
 
 # ---- in-app toasts ----
@@ -142,7 +151,10 @@
 "保存配置失败: {err}" = "Failed to save configuration: {err}"
 "设置开机自启失败: {err}" = "Failed to set auto-start: {err}"
 "创建导出目录失败: {err}" = "Failed to create export folder: {err}"
+"创建目录失败 {path}: {err}" = "Failed to create folder {path}: {err}"
+"打开目录失败 {path}: {err}" = "Failed to open folder {path}: {err}"
 "导出历史失败: {err}" = "Failed to export history: {err}"
+"导出日志失败: {err}" = "Failed to export logs: {err}"
 "已导出到 {path}" = "Exported to {path}"
 
 # ---- tray menu ----
@@ -206,7 +218,15 @@
 "写入图片缓存失败: {err}" = "Failed to write image cache: {err}"
 "创建图片保存目录失败 {path}: {err}" = "Failed to create image folder {path}: {err}"
 "已保存通知图片: {path}" = "Saved notification image: {path}"
+"已保存通知图片（{bytes} 字节）: {path}" = "Saved notification image ({bytes} bytes): {path}"
 "保存通知图片失败 {path}: {err}" = "Failed to save notification image {path}: {err}"
+"下载文件失败 {url}: {err}" = "Failed to download file {url}: {err}"
+"下载文件失败 {url}: HTTP {status}" = "Failed to download file {url}: HTTP {status}"
+"文件超过大小限制（{len} > {limit} 字节），跳过: {url}" = "File too large ({len} > {limit} bytes); skipping {url}"
+"读取文件数据失败 {url}: {err}" = "Failed to read file data {url}: {err}"
+"创建文件保存目录失败 {path}: {err}" = "Failed to create files folder {path}: {err}"
+"已保存附件文件（{bytes} 字节）: {path}" = "Saved attachment file ({bytes} bytes): {path}"
+"保存附件文件失败 {path}: {err}" = "Failed to save attachment file {path}: {err}"
 "发送 Windows 通知失败: {err}" = "Failed to send Windows notification: {err}"
 "打开" = "Open"
 

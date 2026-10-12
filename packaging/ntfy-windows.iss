@@ -5,8 +5,9 @@
 ;   3. 产物位于 dist\ntfy-windows-setup-<version>.exe
 
 #define MyAppName "ntfy-windows"
-#define MyAppVersion "0.1.0"
-#define MyAppPublisher "ntfy-windows"
+#define MyAppVersion "0.1.1"
+#define MyAppPublisher "JackA1ltman"
+#define MyAppURL "https://github.com/JackA1ltman/ntfy-windows"
 #define MyAppExeName "ntfy-windows.exe"
 #define SourceExe "..\target\release\ntfy-windows.exe"
 
@@ -14,7 +15,11 @@
 AppId={{8F3E1C2A-9B7D-4E5A-9C1D-6E2B4A7F0C31}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
+AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
+AppPublisherURL={#MyAppURL}
+AppSupportURL={#MyAppURL}
+AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes

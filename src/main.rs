@@ -153,6 +153,7 @@ fn main() -> anyhow::Result<()> {
     let state = SharedState::new(config.clone());
     let _log_guard = logging::init(state.clone(), &config.logging.level);
     i18n::set_language(&config.ui.language);
+    config::ensure_data_dirs(&config);
 
     // Enforce a single running instance.
     let _instance_guard = match single_instance() {
@@ -222,7 +223,6 @@ fn main() -> anyhow::Result<()> {
         notifier: notifier.clone(),
         cmd_rx,
         cancel: cancel.clone(),
-        cache_dir: config::cache_dir(),
         http,
     };
     runtime.spawn(daemon.run());
