@@ -119,9 +119,48 @@ fn print_help() {    println!(
     );
 }
 
+/// Re-attach to the console of the process that launched us, so CLI output
+/// (`--help`, `--version`, auto-start messages) is visible in the originating
+/// shell even though the release binary is a GUI (`windows`) subsystem app and
+/// therefore has no console of its own.
+#[cfg(windows)]
+fn attach_parent_console() {
+    use std::os::windows::io::AsRawHandle;
+    use windows::Win32::Foundation::HANDLE;
+    use windows::Win32::System::Console::{
+        AttachConsole, SetStdHandle, ATTACH_PARENT_PROCESS, STD_ERROR_HANDLE, STD_OUTPUT_HANDLE,
+    };
+
+    unsafe {
+        // Fails harmlessly when there is no parent console (e.g. launched by
+        // double-clicking the executable).
+        let _ = AttachConsole(ATTACH_PARENT_PROCESS);
+    }
+    // Rust's stdout/stderr still point at the (absent) GUI handles, so point
+    // them at the attached console.
+    if let Ok(file) = std::fs::OpenOptions::new().write(true).open("CONOUT$") {
+        let handle = HANDLE(file.as_raw_handle());
+        unsafe {
+            let _ = SetStdHandle(STD_OUTPUT_HANDLE, handle);
+            let _ = SetStdHandle(STD_ERROR_HANDLE, handle);
+        }
+        // Keep the console handle open for the lifetime of the process.
+        std::mem::forget(file);
+    }
+}
+
+#[cfg(not(windows))]
+fn attach_parent_console() {}
+
 fn main() -> anyhow::Result<()> {
     let args: Vec<String> = std::env::args().collect();
     let options = CliOptions::parse(&args);
+
+    // Console-only modes need the parent shell's console, otherwise their output
+    // is silently discarded in the GUI-subsystem release build.
+    if options.help || options.version || options.install_autostart || options.uninstall_autostart {
+        attach_parent_console();
+    }
 
     if options.help {
         print_help();
