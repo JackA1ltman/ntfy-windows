@@ -132,6 +132,11 @@ fn main() -> anyhow::Result<()> {
         return Ok(());
     }
 
+    // Resolve the UI language early so the startup console messages below
+    // (config load failure, auto-start) are localised. `system` is used until
+    // the configured language is known.
+    i18n::set_language("system");
+
     let config = match &options.config {
         Some(path) => Config::load_from(path),
         None => Config::load(),
@@ -140,6 +145,8 @@ fn main() -> anyhow::Result<()> {
         eprintln!("{}", crate::i18n::tr_args("加载配置失败，改用默认配置: {err}", &[("err", &format!("{e:#}"))]));
         Config::default()
     });
+
+    i18n::set_language(&config.ui.language);
 
     let exe = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("ntfy-windows.exe"));
 
@@ -156,7 +163,6 @@ fn main() -> anyhow::Result<()> {
 
     let state = SharedState::new(config.clone());
     let _log_guard = logging::init(state.clone(), &config.logging.level);
-    i18n::set_language(&config.ui.language);
     config::ensure_data_dirs(&config);
 
     // Enforce a single running instance.

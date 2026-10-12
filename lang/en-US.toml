@@ -168,6 +168,7 @@
 
 # ---- connection status detail (daemon) ----
 "尚未配置订阅主题" = "No topics configured"
+"没有配置任何订阅主题" = "No subscription topics configured"
 "正在连接 ntfy..." = "Connecting to ntfy..."
 "已连接，等待通知" = "Connected, waiting for notifications"
 "连接已关闭，准备重连" = "Connection closed, reconnecting"
@@ -183,6 +184,9 @@
 
 # ---- logs: main / startup ----
 "ntfy-windows v{version} 启动" = "ntfy-windows v{version} starting"
+"加载配置失败，改用默认配置: {err}" = "Failed to load configuration; using defaults: {err}"
+"已设置开机自启（后台托盘，无界面）: {path}" = "Auto-start enabled (headless tray): {path}"
+"已取消开机自启" = "Auto-start disabled"
 "已启用 CPU 监控（每 10 秒输出一次）" = "CPU monitor enabled (prints every 10 s)"
 "已启用内存监控（每 10 秒输出一次）" = "Memory monitor enabled (prints every 10 s)"
 "启动内存监控线程失败: {err}" = "Failed to start memory monitor thread: {err}"
@@ -256,6 +260,9 @@
 
 # ---- logs: gui / tray ----
 "创建系统托盘失败: {err}" = "Failed to create tray icon: {err}"
+"菜单项添加失败: {err}" = "Failed to add menu item: {err}"
+"创建托盘图标失败: {err}" = "Failed to create tray icon: {err}"
+"生成托盘图标失败: {err}" = "Failed to build tray icon: {err}"
 "系统托盘已创建" = "Tray icon created"
 "已加载字体: {path}" = "Loaded font: {path}"
 "自定义字体无法解析: {path}" = "Custom font cannot be parsed: {path}"

@@ -76,7 +76,7 @@ impl NtfyClient {
             .filter(|t| !t.is_empty())
             .collect();
         if clean.is_empty() {
-            bail!("没有配置任何订阅主题");
+            bail!("{}", crate::i18n::tr("没有配置任何订阅主题"));
         }
         Ok(clean.join(","))
     }

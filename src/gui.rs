@@ -1311,8 +1311,13 @@ fn build_tray() -> anyhow::Result<(tray_icon::TrayIcon, TrayMenuIds)> {
     let items: [&dyn tray_icon::menu::IsMenuItem; 5] =
         [&show, &reconnect, &test, &separator, &quit];
     for item in items {
-        menu.append(item)
-            .map_err(|e| anyhow::anyhow!("菜单项添加失败: {e}"))?;
+        menu.append(item).map_err(|e| {
+            let err = e.to_string();
+            anyhow::anyhow!(
+                "{}",
+                crate::i18n::tr_args("菜单项添加失败: {err}", &[("err", err.as_str())])
+            )
+        })?;
     }
 
     let ids = TrayMenuIds {
@@ -1329,7 +1334,13 @@ fn build_tray() -> anyhow::Result<(tray_icon::TrayIcon, TrayMenuIds)> {
         // Left click should return to the window; right click opens the menu.
         .with_menu_on_left_click(false)
         .build()
-        .map_err(|e| anyhow::anyhow!("创建托盘图标失败: {e}"))?;
+        .map_err(|e| {
+            let err = e.to_string();
+            anyhow::anyhow!(
+                "{}",
+                crate::i18n::tr_args("创建托盘图标失败: {err}", &[("err", err.as_str())])
+            )
+        })?;
 
     Ok((tray, ids))
 }

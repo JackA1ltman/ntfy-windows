@@ -30,7 +30,13 @@ pub fn make_icon() -> anyhow::Result<tray_icon::Icon> {
             }
         }
     }
-    tray_icon::Icon::from_rgba(rgba, S, S).map_err(|e| anyhow::anyhow!("生成托盘图标失败: {e}"))
+    tray_icon::Icon::from_rgba(rgba, S, S).map_err(|e| {
+        let err = e.to_string();
+        anyhow::anyhow!(
+            "{}",
+            crate::i18n::tr_args("生成托盘图标失败: {err}", &[("err", err.as_str())])
+        )
+    })
 }
 
 /// Run the daemon headless with a system tray icon and a win32 message loop.
@@ -61,8 +67,13 @@ pub fn run_headless(
             &quit,
         ];
         for item in items {
-            menu.append(item)
-                .map_err(|e| anyhow::anyhow!("菜单项添加失败: {e}"))?;
+            menu.append(item).map_err(|e| {
+                let err = e.to_string();
+                anyhow::anyhow!(
+                    "{}",
+                    crate::i18n::tr_args("菜单项添加失败: {err}", &[("err", err.as_str())])
+                )
+            })?;
         }
 
         let reconnect_id = reconnect.id().clone();
@@ -103,7 +114,13 @@ pub fn run_headless(
             .with_icon(make_icon()?)
             .with_menu(Box::new(menu))
             .build()
-            .map_err(|e| anyhow::anyhow!("创建托盘图标失败: {e}"))?;
+            .map_err(|e| {
+                let err = e.to_string();
+                anyhow::anyhow!(
+                    "{}",
+                    crate::i18n::tr_args("创建托盘图标失败: {err}", &[("err", err.as_str())])
+                )
+            })?;
 
         tracing::info!(
             "{}",
