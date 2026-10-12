@@ -26,7 +26,7 @@ pub struct Daemon {
 
 impl Daemon {
     pub async fn run(mut self) {
-        let mut config = self.state.lock().config.clone();
+        let mut config = Arc::new(self.state.lock().config.clone());
 
         'outer: loop {
             let cancel = self.cancel.child_token();
@@ -83,8 +83,8 @@ impl Daemon {
                             }
                             Some(Command::UpdateConfig(new_config)) => {
                                 info!("{}", crate::i18n::tr("配置已更新，正在重新连接"));
-                                config = *new_config;
-                                self.state.lock().config = config.clone();
+                                config = Arc::from(new_config);
+                                self.state.lock().config = (*config).clone();
                                 cancel.cancel();
                                 task.abort();
                                 let _ = task.await;
@@ -125,7 +125,7 @@ async fn stream_loop(
     state: SharedState,
     notifier: Arc<WindowsNotifier>,
     client: NtfyClient,
-    config: Config,
+    config: Arc<Config>,
     topics: Vec<String>,
     cancel: CancellationToken,
     http: reqwest::Client,
@@ -334,7 +334,7 @@ async fn poll_loop(
     state: SharedState,
     notifier: Arc<WindowsNotifier>,
     client: &NtfyClient,
-    config: Config,
+    config: Arc<Config>,
     topics: Vec<String>,
     cancel: CancellationToken,
     http: reqwest::Client,
