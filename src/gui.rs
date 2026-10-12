@@ -33,6 +33,9 @@ pub struct GuiApp {
     cmd_tx: tokio::sync::mpsc::UnboundedSender<Command>,
     ctx: egui::Context,
     draft: Config,
+    /// Font path currently applied to `ctx`. Used to avoid re-reading the font
+    /// file and rebuilding the font atlas when nothing changed.
+    applied_font_path: String,
     tab: Tab,
     new_topic: String,
     history_search: String,
@@ -90,6 +93,7 @@ impl GuiApp {
         draft.autostart = crate::autostart::is_autostart_enabled();
         setup_fonts(&cc.egui_ctx, &draft.ui.font_path);
         apply_theme(&cc.egui_ctx, &draft.ui.theme);
+        let applied_font_path = draft.ui.font_path.clone();
         // egui by default requests a repaint whenever any widget rect differs
         // from the previous frame. For a mostly-static UI that can turn into a
         // permanent repaint loop (continuous rendering, and a ControlFlow::Poll
@@ -148,6 +152,7 @@ impl GuiApp {
             cmd_tx,
             ctx: cc.egui_ctx.clone(),
             draft,
+            applied_font_path,
             tab: Tab::Dashboard,
             new_topic: String::new(),
             history_search: String::new(),
@@ -183,7 +188,12 @@ impl GuiApp {
             }
         }
         apply_theme(&self.ctx, &self.draft.ui.theme);
-        setup_fonts(&self.ctx, &self.draft.ui.font_path);
+        // Only reload fonts (which reads the file again and rebuilds the glyph
+        // atlas) when the configured font actually changed.
+        if self.draft.ui.font_path != self.applied_font_path {
+            setup_fonts(&self.ctx, &self.draft.ui.font_path);
+            self.applied_font_path = self.draft.ui.font_path.clone();
+        }
         crate::i18n::set_language(&self.draft.ui.language);
         crate::config::ensure_data_dirs(&self.draft);
         self.state.lock().config = self.draft.clone();
