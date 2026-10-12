@@ -23,6 +23,10 @@ use tokio_util::sync::CancellationToken;
 use crate::config::{AuthConfig, AuthMethod, Config, Transport};
 use crate::models::NtfyMessage;
 
+/// Largest single NDJSON/SSE line we accept. Real ntfy messages are far
+/// smaller; a runaway line (no newline) must never grow the buffer forever.
+const MAX_LINE_BYTES: usize = 1024 * 1024;
+
 pub struct NtfyClient {
     http: reqwest::Client,
     base_url: String,
@@ -221,6 +225,16 @@ impl NtfyClient {
                                         }
                                     }
                                 }
+                            }
+                            if buffer.len() > MAX_LINE_BYTES {
+                                let max = MAX_LINE_BYTES.to_string();
+                                bail!(
+                                    "{}",
+                                    crate::i18n::tr_args(
+                                        "服务器返回了超长数据行（超过 {max} 字节），已断开连接",
+                                        &[("max", max.as_str())]
+                                    )
+                                );
                             }
                         }
                         Some(Err(e)) => return Err(e.into()),

@@ -271,6 +271,9 @@
 "已写入开机自启注册表项: {command}" = "Auto-start registry entry written: {command}"
 "已移除开机自启注册表项" = "Auto-start registry entry removed"
 "显示 Windows 通知失败: {err}" = "Failed to show Windows notification: {err}"
+"通知队列已满，已丢弃一条通知" = "Toast queue full; dropped a notification"
+"通知线程不可用" = "Notifier thread unavailable"
+"服务器返回了超长数据行（超过 {max} 字节），已断开连接" = "Server sent an oversized data line (> {max} bytes); disconnecting"
 
 # ---- logs: cpu monitor ----
 "CPU 监控: 进程占用 {cpu}%（单核=100%），GUI 重绘 {fps}/s，状态唤醒 {wps}/s" = "CPU: process {cpu}% (one core = 100%), GUI repaints {fps}/s, state wakes {wps}/s"

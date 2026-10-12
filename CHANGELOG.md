@@ -21,6 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The CJK / symbol font bytes are now loaded once and kept in static memory
   (`FontData::from_static`), so epaint borrows them instead of holding a second copy of the
   ~20 MB font data. First launch loads `msyh.ttc` and `seguisym.ttf` once (cached by path).
+- History entries no longer store the id/topic/title/message/priority/tags twice; they are
+  read from the stored `raw` message via accessors.
+
+### Fixed
+
+- Bound the notification queue (64 toasts) and the NDJSON / SSE line buffer (1 MiB), so a
+  burst or a runaway line drops/disconnects instead of growing memory without limit.
+- Loading the CJK font no longer keeps two copies in memory (see above).
 
 ## [0.1.1] - 2026-10-11
 

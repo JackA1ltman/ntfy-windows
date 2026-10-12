@@ -36,14 +36,18 @@ pub struct ToastContent {
     pub actions: Vec<ToastAction>,
 }
 
+/// Maximum number of toasts queued for the notifier thread. A burst can never
+/// grow memory without bound; excess notifications are dropped and logged.
+const TOAST_QUEUE_CAPACITY: usize = 64;
+
 /// Handle used to submit notifications. Cheap to clone and `Send + Sync`.
 pub struct WindowsNotifier {
-    tx: mpsc::UnboundedSender<String>,
+    tx: mpsc::Sender<String>,
 }
 
 impl WindowsNotifier {
     pub fn new(app_id: &str) -> Self {
-        let (tx, mut rx) = mpsc::unbounded_channel::<String>();
+        let (tx, mut rx) = mpsc::channel::<String>(TOAST_QUEUE_CAPACITY);
         let app_id = app_id.to_string();
         std::thread::Builder::new()
             .name("ntfy-toast".to_string())
@@ -75,12 +79,22 @@ impl WindowsNotifier {
     }
 
     /// Build the toast XML and enqueue it for the notification thread.
+    ///
+    /// The queue is bounded: when it is full the notification is dropped so a
+    /// burst cannot grow memory without bound.
     pub fn show(&self, content: ToastContent) -> Result<()> {
         let xml = build_xml(&content);
-        self.tx
-            .send(xml)
-            .map_err(|e| anyhow::anyhow!("通知线程不可用: {e}"))?;
-        Ok(())
+        match self.tx.try_send(xml) {
+            Ok(()) => Ok(()),
+            Err(mpsc::error::TrySendError::Full(_)) => Err(anyhow::anyhow!(
+                "{}",
+                crate::i18n::tr("通知队列已满，已丢弃一条通知")
+            )),
+            Err(mpsc::error::TrySendError::Closed(_)) => Err(anyhow::anyhow!(
+                "{}",
+                crate::i18n::tr("通知线程不可用")
+            )),
+        }
     }
 }
 
