@@ -203,9 +203,16 @@ fn main() -> anyhow::Result<()> {
 
     let notifier = Arc::new(WindowsNotifier::new(&config.notification.app_id));
 
+    // The daemon is I/O bound (one long-lived subscription stream plus the
+    // occasional attachment download), so a small fixed worker pool is enough.
+    // The default is one worker per CPU core, each with a 2 MiB stack, which is
+    // wasteful on high-core-count machines.
     let runtime = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
+        .worker_threads(2)
+        .max_blocking_threads(8)
         .thread_name("ntfy-rt")
+        .thread_stack_size(1024 * 1024)
+        .enable_all()
         .build()
         .context("创建 tokio 运行时失败")?;
 
