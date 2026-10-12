@@ -27,6 +27,9 @@ use crate::models::NtfyMessage;
 /// smaller; a runaway line (no newline) must never grow the buffer forever.
 const MAX_LINE_BYTES: usize = 1024 * 1024;
 
+/// Largest poll response body we read into memory.
+const MAX_POLL_BYTES: usize = 8 * 1024 * 1024;
+
 pub struct NtfyClient {
     http: reqwest::Client,
     base_url: String,
@@ -360,8 +363,23 @@ impl NtfyClient {
                 );
                 bail!("{}", message);
             }
-            let body = resp.text().await?;
-            Ok::<String, anyhow::Error>(body)
+            // Read the body with an upper bound so a huge (possibly chunked)
+            // response cannot allocate without limit.
+            let mut bytes: Vec<u8> = Vec::new();
+            let mut stream = resp.bytes_stream();
+            while let Some(chunk) = stream.next().await {
+                let chunk = chunk?;
+                if bytes.len() + chunk.len() > MAX_POLL_BYTES {
+                    let max = MAX_POLL_BYTES.to_string();
+                    let message = crate::i18n::tr_args(
+                        "轮询响应过大（超过 {max} 字节），已跳过",
+                        &[("max", max.as_str())],
+                    );
+                    bail!("{}", message);
+                }
+                bytes.extend_from_slice(&chunk);
+            }
+            Ok::<String, anyhow::Error>(String::from_utf8_lossy(&bytes).into_owned())
         };
         let body = match tokio::time::timeout(Duration::from_secs(30), fetch).await {
             Ok(Ok(body)) => body,

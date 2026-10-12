@@ -28,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bound the notification queue (64 toasts) and the NDJSON / SSE line buffer (1 MiB), so a
   burst or a runaway line drops/disconnects instead of growing memory without limit.
+- Bound image decoding (max 8192 px per side, 64 MiB decode allocation) and the poll
+  response body (8 MiB), so an oversized image or poll response cannot exhaust memory.
 - Loading the CJK font no longer keeps two copies in memory (see above).
 
 ## [0.1.1] - 2026-10-11

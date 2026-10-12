@@ -274,6 +274,7 @@
 "通知队列已满，已丢弃一条通知" = "Toast queue full; dropped a notification"
 "通知线程不可用" = "Notifier thread unavailable"
 "服务器返回了超长数据行（超过 {max} 字节），已断开连接" = "Server sent an oversized data line (> {max} bytes); disconnecting"
+"轮询响应过大（超过 {max} 字节），已跳过" = "Poll response too large (> {max} bytes); skipped"
 
 # ---- logs: cpu monitor ----
 "CPU 监控: 进程占用 {cpu}%（单核=100%），GUI 重绘 {fps}/s，状态唤醒 {wps}/s" = "CPU: process {cpu}% (one core = 100%), GUI repaints {fps}/s, state wakes {wps}/s"

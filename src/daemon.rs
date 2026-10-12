@@ -16,6 +16,12 @@ use crate::ntfy_client::NtfyClient;
 use crate::state::{Command, ConnectionStatus, HistoryEntry, SharedState};
 use crate::windows_notifier::{ToastAction, ToastContent, WindowsNotifier};
 
+/// Upper bound on the decoded image size. The image is downscaled to 512 px
+/// anyway, so a larger source is unnecessary; this stops a small but highly
+/// compressible image from expanding to hundreds of MB in memory.
+const MAX_IMAGE_DIM: u32 = 8192;
+const MAX_IMAGE_ALLOC: u64 = 64 * 1024 * 1024;
+
 pub struct Daemon {
     pub state: SharedState,
     pub notifier: Arc<WindowsNotifier>,
@@ -696,8 +702,27 @@ async fn fetch_image(
         return None;
     }
 
-    // Decode and normalise to PNG.
-    let decoded = match image::load_from_memory(&bytes) {
+    // Decode with explicit limits so a small but highly compressible image
+    // cannot expand to hundreds of MB (it is downscaled to 512 px anyway).
+    let mut limits = image::Limits::default();
+    limits.max_image_width = Some(MAX_IMAGE_DIM);
+    limits.max_image_height = Some(MAX_IMAGE_DIM);
+    limits.max_alloc = Some(MAX_IMAGE_ALLOC);
+    let mut reader = match image::ImageReader::new(std::io::Cursor::new(&bytes))
+        .with_guessed_format()
+    {
+        Ok(reader) => reader,
+        Err(e) => {
+            let err = e.to_string();
+            warn!(
+                "{}",
+                crate::i18n::tr_args("无法解析图片 {url}: {err}", &[("url", url), ("err", err.as_str())])
+            );
+            return None;
+        }
+    };
+    reader.limits(limits);
+    let decoded = match reader.decode() {
         Ok(img) => img,
         Err(e) => {
             let err = e.to_string();
