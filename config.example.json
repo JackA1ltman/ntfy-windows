@@ -45,6 +45,7 @@
     "language": "system"
   },
   "logging": {
-    "level": "info"
+    "level": "info",
+    "max_log_files": 30
   }
 }

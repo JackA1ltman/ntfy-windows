@@ -876,6 +876,10 @@ impl GuiApp {
                         ui.text_edit_singleline(&mut self.draft.logging.level);
                     });
                     ui.weak(crate::i18n::tr("日志级别: trace / debug / info / warn / error"));
+                    ui.add(
+                        egui::Slider::new(&mut self.draft.logging.max_log_files, 0..=365)
+                            .text(crate::i18n::tr("保留日志文件数（0 = 不限制）")),
+                    );
                     ui.horizontal(|ui| {
                         ui.label(crate::i18n::tr("中文字体:"));
                         ui.text_edit_singleline(&mut self.draft.ui.font_path);

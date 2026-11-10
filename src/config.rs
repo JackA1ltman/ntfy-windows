@@ -259,12 +259,16 @@ impl Default for UiConfig {
 #[serde(default)]
 pub struct LoggingConfig {
     pub level: String,
+    /// Keep at most this many daily log files (`0` = unlimited). Older files are
+    /// deleted on startup and on every rotation.
+    pub max_log_files: usize,
 }
 
 impl Default for LoggingConfig {
     fn default() -> Self {
         Self {
             level: "info".to_string(),
+            max_log_files: 30,
         }
     }
 }

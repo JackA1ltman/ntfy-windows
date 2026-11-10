@@ -55,7 +55,9 @@ plus a headless tray mode.
 - **Portable configuration**: `config.json` next to the executable (falls back to
   `%APPDATA%\ntfy-windows\config.json`); legacy `config.toml` is migrated automatically.
 - **CJK fonts**: system CJK fonts (Microsoft YaHei / SimHei, …) are loaded automatically.
-- **Logging**: `tracing` + `tracing-subscriber`, daily rolling files mirrored into the GUI.
+- **Logging**: `tracing` + `tracing-subscriber`, daily rolling files mirrored into the GUI;
+  keeps the most recent `logging.max_log_files` files (default 30, `0` = unlimited) and prunes
+  older ones on startup and rotation.
 - **Attachment images**: previewed in the toast and saved directly into a persistent folder
   (default `%LOCALAPPDATA%\ntfy-windows\images`, named like `20261009-215349_laptop_photo.jpg`);
   toast icons are cached under `images\icons\`. Openable from the history.
@@ -205,7 +207,8 @@ Default path: `<program dir>\config.json` (or `--config`; legacy `.toml` files a
     "language": "system"
   },
   "logging": {
-    "level": "info"
+    "level": "info",
+    "max_log_files": 30
   }
 }
 ```

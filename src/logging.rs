@@ -61,7 +61,7 @@ where
 ///
 /// The returned guard must be kept alive for the duration of the program so
 /// that buffered log lines are flushed.
-pub fn init(state: SharedState, level: &str) -> Option<WorkerGuard> {
+pub fn init(state: SharedState, level: &str, max_log_files: usize) -> Option<WorkerGuard> {
     let dir = crate::config::log_dir();
     if let Err(e) = std::fs::create_dir_all(&dir) {
         eprintln!("创建日志目录失败: {e}");
@@ -72,6 +72,7 @@ pub fn init(state: SharedState, level: &str) -> Option<WorkerGuard> {
         .rotation(tracing_appender::rolling::Rotation::DAILY)
         .filename_prefix("ntfy-windows")
         .filename_suffix("log")
+        .max_log_files(max_log_files)
         .build(&dir)
     {
         Ok(appender) => appender,

@@ -53,7 +53,7 @@
 - **可移植配置**：配置保存在**程序所在目录**的 `config.json`（若目录不可写则自动回退到
   `%APPDATA%\ntfy-windows\config.json`），首次启动会自动从旧版 `config.toml` 迁移。
 - **中文字体**：自动加载系统中文字体（微软雅黑 / 黑体等），GUI 不再显示方块。
-- **日志**：`tracing` + `tracing-subscriber`，按天滚动写入文件，并同步显示在 GUI。
+- **日志**：`tracing` + `tracing-subscriber`，按天滚动写入文件，并同步显示在 GUI；默认只保留最近 30 个日志文件（`logging.max_log_files`，`0` = 不限制），启动与滚动时自动清理旧文件。
 - **图片附件预览**：自动下载图片附件与图标，并作为 Toast 主图 / 圆角图标显示（图标缓存在
   `images\icons` 子目录，按哈希复用）。
 - **图片归档**：收到的图片会直接保存到持久目录（默认 `%LOCALAPPDATA%\ntfy-windows\images`，文件名如
@@ -207,7 +207,8 @@ cargo build --release
     "language": "system"
   },
   "logging": {
-    "level": "info"
+    "level": "info",
+    "max_log_files": 30
   }
 }
 ```

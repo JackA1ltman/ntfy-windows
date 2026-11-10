@@ -243,7 +243,11 @@ fn main() -> anyhow::Result<()> {
     }
 
     let state = SharedState::new(config.clone());
-    let _log_guard = logging::init(state.clone(), &config.logging.level);
+    let _log_guard = logging::init(
+        state.clone(),
+        &config.logging.level,
+        config.logging.max_log_files,
+    );
     config::ensure_data_dirs(&config);
 
     // Enforce a single running instance.

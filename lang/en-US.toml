@@ -110,6 +110,7 @@
 "历史条数上限" = "History limit"
 "日志级别:" = "Log level:"
 "日志级别: trace / debug / info / warn / error" = "Level: trace / debug / info / warn / error"
+"保留日志文件数（0 = 不限制）" = "Log files to keep (0 = unlimited)"
 "中文字体:" = "CJK font:"
 "留空则自动检测系统字体（微软雅黑 / 黑体等）；也可填入 ttf/ttc 绝对路径。" = "Empty = auto-detect (Microsoft YaHei / SimHei, ...). You may enter an absolute .ttf/.ttc path."
 "关闭窗口时最小化到系统托盘" = "Minimize to tray when closing the window"

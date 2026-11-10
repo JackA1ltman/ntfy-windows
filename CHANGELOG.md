@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `--mem-debug`: log process working set / commit size and the in-memory history / log
   buffer sizes every 10 s (useful to tell GUI memory apart from buffer growth).
+- Log files are now pruned to the most recent `logging.max_log_files` (default 30; `0` =
+  unlimited) on startup and on every rotation, so the logs folder no longer grows forever.
 - Sticky notifications: events at or above `notification.sticky_min_priority`
   (default `5`, `0` = off) now use a toast `scenario` so they stay on screen until handled —
   `"reminder"` (stays) or `"alarm"` (stays + loops the alarm sound), selectable via
